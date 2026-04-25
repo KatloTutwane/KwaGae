@@ -11,6 +11,9 @@ interface ListingDao {
     @Query("SELECT * FROM listings WHERE isAvailable = 1")
     fun getAvailableListings(): Flow<List<Listing>>
 
+    @Query("SELECT * FROM listings")
+    suspend fun getAllListings(): List<Listing>
+
     @Insert
     suspend fun insertListing(listing: Listing)
 }

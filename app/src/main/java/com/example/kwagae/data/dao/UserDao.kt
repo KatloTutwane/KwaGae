@@ -33,4 +33,7 @@ interface UserDao {
     // ── Provider specific ──
     @Query("SELECT * FROM users WHERE role = 'provider'")
     suspend fun getAllProviders(): List<User>
+
+    @Query("SELECT * FROM users")
+    suspend fun getAllUsers(): List<User>
 }

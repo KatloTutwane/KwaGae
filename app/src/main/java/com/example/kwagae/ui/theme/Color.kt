@@ -2,29 +2,38 @@ package com.example.kwagae.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// KwagaeStays Brand Colors
-val KwagaeTeal        = Color(0xFF00796B)  // Primary - deep teal
-val KwagaeTealLight   = Color(0xFF48A999)  // Primary variant
-val KwagaeTealDark    = Color(0xFF004C40)  // Dark variant
+// 🎨 PRIMARY (Glass Blue instead of dull teal)
+val KwagaePrimary        = Color(0xFF4B8EFF)  // brighter, more modern
+val KwagaePrimaryLight   = Color(0xFF82B1FF)
+val KwagaePrimaryDark    = Color(0xFF005BC1)
 
-val KwagaeAmber       = Color(0xFFFFB300)  // Accent - warm amber (Botswana sun)
-val KwagaeAmberLight  = Color(0xFFFFE54C)
-val KwagaeAmberDark   = Color(0xFFC68400)
+// 🍯 ACCENT (keep Botswana warmth but refine)
+val KwagaeAccent         = Color(0xFFFFC107)  // cleaner amber
+val KwagaeAccentLight    = Color(0xFFFFE082)
+val KwagaeAccentDark     = Color(0xFFFF8F00)
 
-val KwagaeSurface     = Color(0xFFF5F5F0)  // Warm off-white background
-val KwagaeCard        = Color(0xFFFFFFFF)
-val KwagaeBorder      = Color(0xFFE0E0D8)
+// 🌙 BACKGROUND (true glass base)
+val KwagaeDarkBg         = Color(0xFF121317)
+val KwagaeDarkSurface    = Color(0xFF1A1B1F)
+val KwagaeDarkCard       = Color(0xFF202226)
 
-val KwagaeTextPrimary   = Color(0xFF1A1A2E)
-val KwagaeTextSecondary = Color(0xFF6B7280)
-val KwagaeTextHint      = Color(0xFF9CA3AF)
+// 🔮 GLASS LAYERS
+val KwagaeGlass          = Color.White.copy(alpha = 0.08f)
+val KwagaeGlassStrong    = Color.White.copy(alpha = 0.12f)
+val KwagaeGlassBorder    = Color.White.copy(alpha = 0.18f)
 
-val KwagaeError       = Color(0xFFDC2626)
-val KwagaeSuccess     = Color(0xFF16A34A)
+// ✍️ TEXT (FIXED FOR VISIBILITY)
+val KwagaeTextPrimary    = Color(0xFFFFFFFF)        // pure white (main fix)
+val KwagaeTextSecondary  = Color(0xFFB0B8C1)        // softer but readable
+val KwagaeTextHint       = Color(0xFF7A8594)        // muted but visible
 
-// Dark theme
-val KwagaeTealDark80  = Color(0xFF80CBC4)
-val KwagaeAmberDark80 = Color(0xFFFFD54F)
-val KwagaeDarkBg      = Color(0xFF0F1923)
-val KwagaeDarkSurface = Color(0xFF1A2530)
-val KwagaeDarkCard    = Color(0xFF243040)
+// ⚠️ STATES
+val KwagaeError          = Color(0xFFFF6B6B)        // brighter error
+val KwagaeSuccess        = Color(0xFF22C55E)        // more vibrant green
+
+// ☀️ LIGHT MODE (updated with black text)
+val KwagaeLightBg        = Color(0xFFF5F7FA)        // soft light background
+val KwagaeLightSurface   = Color(0xFFFFFFFF)        // pure white surface
+val KwagaeLightText      = Color(0xFF000000)        // BLACK text for better contrast
+val KwagaeLightTextSecondary = Color(0xFF333333)    // Dark gray for secondary text
+val KwagaeLightTextHint  = Color(0xFF666666)        // Medium gray for hints
