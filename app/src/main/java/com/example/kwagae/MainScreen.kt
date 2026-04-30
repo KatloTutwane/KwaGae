@@ -30,7 +30,37 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.kwagae.data.database.AppDatabase
 import com.example.kwagae.data.models.Listing
+import com.example.kwagae.ui.theme.GroundedColors
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.vector.ImageVector
+
+// Data class for categories
+data class Category(val name: String, val icon: ImageVector)
+
+// ── Brush helpers (matching login screen) ────────────────────────────────────
+private val backgroundGradient = Brush.verticalGradient(
+    colors = listOf(
+        GroundedColors.BgTop,
+        GroundedColors.BgMid1,
+        GroundedColors.BgMid2,
+        GroundedColors.BgBottom
+    )
+)
+
+private val topStripeGradient = Brush.horizontalGradient(
+    colors = listOf(
+        GroundedColors.AccentMoss,
+        GroundedColors.AccentClay,
+        GroundedColors.AccentBark
+    )
+)
+
+private val cardGradient = Brush.verticalGradient(
+    colors = listOf(
+        GroundedColors.CreamCard,
+        GroundedColors.CreamCard.copy(alpha = 0.95f)
+    )
+)
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -39,18 +69,19 @@ fun MainScreen(navController: NavController) {
 
     Scaffold(
         bottomBar = {
-            // Comic-style navigation bar
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 3.dp,
-                modifier = Modifier.graphicsLayer(
-                    shadowElevation = 8f,
-                    spotShadowColor = MaterialTheme.colorScheme.primary
+                containerColor = GroundedColors.CreamCard,
+                tonalElevation = 0.dp,
+                modifier = Modifier.shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    ambientColor = Color(0xFF1E1208).copy(alpha = 0.15f),
+                    spotColor = Color(0xFF1E1208).copy(alpha = 0.1f)
                 )
             ) {
                 val items = listOf("listings", "filters", "profile")
                 val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.Person)
-                val labels = listOf("🏠 Houses", "🔍 Filters", "👤 Profile")
+                val labels = listOf("HOMES", "FILTERS", "PROFILE")
 
                 items.forEachIndexed { index, screen ->
                     val isSelected = bottomNavController.currentBackStackEntry?.destination?.route == screen
@@ -66,21 +97,25 @@ fun MainScreen(navController: NavController) {
                             Icon(
                                 icons[index],
                                 contentDescription = labels[index],
-                                modifier = Modifier.graphicsLayer(
-                                    scaleX = if (isSelected) 1.1f else 1f,
-                                    scaleY = if (isSelected) 1.1f else 1f
-                                )
+                                modifier = Modifier.size(24.dp),
+                                tint = if (isSelected) GroundedColors.ClayWarm else GroundedColors.TextMuted
                             )
                         },
                         label = {
                             Text(
                                 labels[index],
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                letterSpacing = 1.sp,
+                                color = if (isSelected) GroundedColors.ClayWarm else GroundedColors.TextMuted
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary
+                            selectedIconColor = GroundedColors.ClayWarm,
+                            selectedTextColor = GroundedColors.ClayWarm,
+                            unselectedIconColor = GroundedColors.TextMuted,
+                            unselectedTextColor = GroundedColors.TextMuted,
+                            indicatorColor = GroundedColors.AccentClay.copy(alpha = 0.1f)
                         )
                     )
                 }
@@ -92,17 +127,16 @@ fun MainScreen(navController: NavController) {
             startDestination = "listings",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("listings") { ComicListingsScreen(navController) }
-            composable("filters") { ComicFiltersScreen(bottomNavController) }
-            composable("profile") { ComicProfileScreen(navController) }
+            composable("listings") { GroundedListingsScreen(navController) }
+            composable("filters") { GroundedFiltersScreen(bottomNavController) }
+            composable("profile") { GroundedProfileScreen(navController) }
         }
     }
 }
 
-// 🎨 COMIC-STYLE LISTINGS SCREEN
-@OptIn(ExperimentalAnimationApi::class)
+// 🌱 GROUNDED LISTINGS SCREEN
 @Composable
-fun ComicListingsScreen(navController: NavController) {
+fun GroundedListingsScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -113,24 +147,12 @@ fun ComicListingsScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var selectedCategory by remember { mutableStateOf("All") }
 
-    // Comic-style animation
-    val infiniteTransition = rememberInfiniteTransition(label = "comic_shake")
-    val comicShake by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shake"
-    )
-
     val categories = listOf(
-        "All" to "🏠",
-        "Apartments" to "🏢",
-        "Houses" to "🏡",
-        "Rooms" to "🛏️",
-        "Studios" to "🎨"
+        Category("All", Icons.Default.Home),
+        Category("Apartments", Icons.Default.Business),
+        Category("Houses", Icons.Default.House),
+        Category("Rooms", Icons.Default.Bed),
+        Category("Studios", Icons.Default.Apartment)
     )
 
     LaunchedEffect(Unit) {
@@ -156,100 +178,90 @@ fun ComicListingsScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .background(backgroundGradient)
     ) {
-        val primaryColor = MaterialTheme.colorScheme.primary
-        // Manga screentone dots
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val dotSpacing = 30f
-            val dotRadius = 1.5f
-            for (x in 0..(size.width / dotSpacing).toInt()) {
-                for (y in 0..(size.height / dotSpacing).toInt()) {
-                    drawCircle(
-                        color = primaryColor.copy(alpha = 0.05f),
-                        radius = dotRadius,
-                        center = Offset(x * dotSpacing, y * dotSpacing)
-                    )
-                }
-            }
-        }
+        LeafShape(
+            modifier = Modifier
+                .size(250.dp)
+                .offset(x = (-80).dp, y = (-40).dp)
+        )
+        LeafShape(
+            modifier = Modifier
+                .size(180.dp)
+                .offset(x = 240.dp, y = 600.dp)
+        )
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // Comic Header
             item {
-                ComicHeader(
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(topStripeGradient)
+                )
+            }
+
+            item {
+                GroundedHeader(
                     userName = userFullName.ifEmpty { "Explorer" },
                     userRole = userRole,
-                    comicShake = comicShake,
                     onNotificationClick = { /* TODO */ },
                     onProfileClick = { /* TODO */ }
                 )
             }
 
-            // Stats Panel
             item {
-                ComicStatsPanel(
+                GroundedStatsPanel(
                     listingsCount = recentListings.size,
                     favoritesCount = 12,
                     visitsCount = 8,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                 )
             }
 
-            // Categories
             item {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SectionHeader(
-                        title = "📚 Categories",
-                        emoji = "🎯",
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                    GroundedSectionHeader(
+                        title = "EXPLORE CATEGORIES",
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
 
                     LazyRow(
                         modifier = Modifier.padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp)
+                        contentPadding = PaddingValues(horizontal = 20.dp)
                     ) {
-                        items(categories) { (category, emoji) ->
-                            ComicCategoryChip(
-                                category = category,
-                                emoji = emoji,
-                                isSelected = selectedCategory == category,
-                                onClick = { selectedCategory = category }
+                        items(categories) { category ->
+                            GroundedCategoryChip(
+                                category = category.name,
+                                icon = category.icon,
+                                isSelected = selectedCategory == category.name,
+                                onClick = { selectedCategory = category.name }
                             )
                         }
                     }
                 }
             }
 
-            // Recent Listings
             item {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SectionHeader(
-                        title = "🔥 New Adventures",
-                        emoji = "⚡",
+                    GroundedSectionHeader(
+                        title = "RECENT LISTINGS",
                         actionText = "See all",
                         onActionClick = { /* TODO */ },
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
 
                     LazyRow(
                         modifier = Modifier.padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp)
+                        contentPadding = PaddingValues(horizontal = 20.dp)
                     ) {
                         items(recentListings) { listing ->
-                            ComicListingCard(
+                            GroundedListingCardHorizontal(
                                 listing = listing,
                                 onClick = {
                                     navController.navigate("listing_detail/${listing.listingId}")
@@ -257,22 +269,20 @@ fun ComicListingsScreen(navController: NavController) {
                             )
                         }
                     }
-                    
+
                     if (recentListings.isEmpty() && !isLoading) {
-                        EmptyComicCard(text = "No listings yet", modifier = Modifier.padding(16.dp))
+                        GroundedEmptyCard(text = "No listings available", modifier = Modifier.padding(16.dp))
                     }
                 }
             }
 
-            // Recommended
             item {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SectionHeader(
-                        title = "✨ Magical Picks",
-                        emoji = "🎭",
+                    GroundedSectionHeader(
+                        title = "RECOMMENDED FOR YOU",
                         actionText = "More",
                         onActionClick = { /* TODO */ },
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
 
                     if (recommendedListings.isNotEmpty()) {
@@ -280,11 +290,11 @@ fun ComicListingsScreen(navController: NavController) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    .padding(horizontal = 20.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 rowListings.forEach { listing ->
-                                    ComicVerticalCard(
+                                    GroundedListingCardVertical(
                                         listing = listing,
                                         modifier = Modifier.weight(1f),
                                         onClick = {
@@ -304,9 +314,11 @@ fun ComicListingsScreen(navController: NavController) {
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No recommendations yet",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "No recommendations yet",
+                                fontSize = 13.sp,
+                                color = GroundedColors.TextMuted
+                            )
                         }
                     }
                 }
@@ -320,7 +332,19 @@ fun ComicListingsScreen(navController: NavController) {
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = GroundedColors.ClayWarm,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = "Finding your grounded home...",
+                                fontSize = 13.sp,
+                                color = GroundedColors.TextMuted
+                            )
+                        }
                     }
                 }
             }
@@ -328,123 +352,167 @@ fun ComicListingsScreen(navController: NavController) {
     }
 }
 
-// 🎨 COMIC FILTERS SCREEN
+// 🌱 GROUNDED FILTERS SCREEN
 @Composable
-fun ComicFiltersScreen(bottomNavController: NavController) {
+fun GroundedFiltersScreen(bottomNavController: NavController) {
     var selectedBedrooms by remember { mutableStateOf(1) }
     var selectedPropertyType by remember { mutableStateOf("All") }
+    var priceRange by remember { mutableStateOf(5000f) }
 
     val propertyTypes = listOf("All", "Apartment", "House", "Room", "Studio")
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .background(backgroundGradient)
     ) {
-        item {
-            Text(
-                text = "🔍 Filter Your Quest",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        }
+        LeafShape(
+            modifier = Modifier
+                .size(200.dp)
+                .offset(x = 220.dp, y = (-40).dp)
+        )
 
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(topStripeGradient)
                 )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("💰 Price Range", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // Simplified slider - in real app, use RangeSlider
-                    Text("₱0 - ₱1000+", color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(16.dp))
+            }
+
+            item {
+                Text(
+                    text = "FILTER YOUR SEARCH",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = GroundedColors.ClayWarm,
+                    letterSpacing = 3.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "Find Your Grounded Home",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GroundedColors.TextPrimary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
+            item {
+                GroundedFilterCard(
+                    title = "BUDGET RANGE",
+                    icon = Icons.Default.AttachMoney
+                ) {
+                    Column {
+                        Text(
+                            text = "₱0 - ₱${priceRange.toInt()}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GroundedColors.ClayWarm
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(GroundedColors.BorderDefault)
+                                .clip(RoundedCornerShape(2.dp))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(priceRange / 10000f)
+                                    .fillMaxHeight()
+                                    .background(GroundedColors.ClayWarm)
+                                    .clip(RoundedCornerShape(2.dp))
+                            )
+                        }
+                    }
                 }
             }
-        }
 
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("🛏️ Bedrooms", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
+            item {
+                GroundedFilterCard(
+                    title = "BEDROOMS",
+                    icon = Icons.Default.Bed
+                ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         listOf(1, 2, 3, 4).forEach { bedrooms ->
-                            FilterChip(
-                                selected = selectedBedrooms == bedrooms,
-                                onClick = { selectedBedrooms = bedrooms },
-                                label = { Text("$bedrooms") }
+                            GroundedFilterChip(
+                                label = "$bedrooms",
+                                isSelected = selectedBedrooms == bedrooms,
+                                onClick = { selectedBedrooms = bedrooms }
                             )
                         }
                     }
                 }
             }
-        }
 
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("🏠 Property Type", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
+            item {
+                GroundedFilterCard(
+                    title = "PROPERTY TYPE",
+                    icon = Icons.Default.House
+                ) {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(propertyTypes) { type ->
-                            FilterChip(
-                                selected = selectedPropertyType == type,
-                                onClick = { selectedPropertyType = type },
-                                label = { Text(type) }
+                            GroundedFilterChip(
+                                label = type,
+                                isSelected = selectedPropertyType == type,
+                                onClick = { selectedPropertyType = type }
                             )
                         }
                     }
                 }
             }
-        }
 
-        item {
-            Button(
-                onClick = { bottomNavController.popBackStack() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("🔮 Apply Magic Filter")
+            item {
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = { bottomNavController.popBackStack() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GroundedColors.ClayWarm
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Color(0xFFF5E8CC)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "APPLY FILTERS",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 2.sp,
+                        color = Color(0xFFF5E8CC)
+                    )
+                }
+
+                Spacer(Modifier.height(32.dp))
             }
         }
     }
 }
 
-// 🎨 COMIC PROFILE SCREEN
+// 🌱 GROUNDED PROFILE SCREEN
 @Composable
-fun ComicProfileScreen(navController: NavController) {
+fun GroundedProfileScreen(navController: NavController) {
     val context = LocalContext.current
     var user by remember { mutableStateOf<com.example.kwagae.data.models.User?>(null) }
 
@@ -454,226 +522,284 @@ fun ComicProfileScreen(navController: NavController) {
         user = users.firstOrNull()
     }
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(backgroundGradient)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Comic avatar
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.secondary
-                            )
-                        )
-                    )
-                    .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (user?.role == "student") "🎓" else "🏠",
-                    fontSize = 56.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = user?.fullName?.split(" ")?.first() ?: "Explorer",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Text(
-                text = if (user?.role == "student") "✨ Home Seeker ✨" else "🌟 Property Host 🌟",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Text(
-                text = user?.email ?: "email@example.com",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-
-        // Stats cards
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ProfileStatCard("🎯", "Member Since", "2024", Modifier.weight(1f))
-                ProfileStatCard("📊", "Listings", "0", Modifier.weight(1f))
-                ProfileStatCard("❤️", "Saved", "0", Modifier.weight(1f))
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Menu items
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column {
-                    ProfileMenuItem("⚙️", "Settings", "Adjust your preferences")
-                    HorizontalDivider()
-                    ProfileMenuItem("🎨", "Appearance", "Theme and display")
-                    HorizontalDivider()
-                    ProfileMenuItem("🔒", "Privacy", "Security settings")
-                    HorizontalDivider()
-                    ProfileMenuItem("❓", "Help Center", "FAQs and support")
-                    HorizontalDivider()
-                    ProfileMenuItem("📝", "Terms & Conditions", "Legal stuff")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Logout button
-        item {
-            Button(
-                onClick = {
-                    navController.navigate("login") {
-                        popUpTo("main") { inclusive = true }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("🚪 Logout")
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
-
-// Helper Components
-@Composable
-fun ProfileStatCard(emoji: String, label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        LeafShape(
+            modifier = Modifier
+                .size(220.dp)
+                .offset(x = (-60).dp, y = 500.dp)
         )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
+        LeafShape(
+            modifier = Modifier
+                .size(150.dp)
+                .offset(x = 250.dp, y = 100.dp)
+        )
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(emoji, fontSize = 24.sp)
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(topStripeGradient)
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+
+            item {
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    GroundedColors.ClayWarm,
+                                    GroundedColors.BarkMid
+                                )
+                            )
+                        )
+                        .border(3.dp, GroundedColors.AccentMoss, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                        tint = Color(0xFFF5E8CC)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = user?.fullName?.split(" ")?.first() ?: "Explorer",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GroundedColors.TextPrimary
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = GroundedColors.AccentMoss.copy(alpha = 0.15f),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.School,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = GroundedColors.AccentMoss
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (user?.role == "student") "STUDENT HOMESEEKER" else "PROPERTY HOST",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 1.sp,
+                            color = GroundedColors.AccentMoss
+                        )
+                    }
+                }
+
+                Text(
+                    text = user?.email ?: "email@example.com",
+                    fontSize = 13.sp,
+                    color = GroundedColors.TextSecondary,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                Spacer(Modifier.height(32.dp))
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    GroundedProfileStatCard(
+                        icon = Icons.Default.CalendarToday,
+                        label = "Member Since",
+                        value = "2024",
+                        modifier = Modifier.weight(1f)
+                    )
+                    GroundedProfileStatCard(
+                        icon = Icons.Default.Home,
+                        label = "Listings",
+                        value = "0",
+                        modifier = Modifier.weight(1f)
+                    )
+                    GroundedProfileStatCard(
+                        icon = Icons.Default.Favorite,
+                        label = "Saved",
+                        value = "0",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, GroundedColors.BorderDefault, RoundedCornerShape(16.dp))
+                    ) {
+                        GroundedProfileMenuItem(Icons.Default.Settings, "Settings", "Adjust your preferences")
+                        HorizontalDivider(color = GroundedColors.BorderDefault)
+                        GroundedProfileMenuItem(Icons.Default.Palette, "Appearance", "Theme and display")
+                        HorizontalDivider(color = GroundedColors.BorderDefault)
+                        GroundedProfileMenuItem(Icons.Default.Lock, "Privacy", "Security settings")
+                        HorizontalDivider(color = GroundedColors.BorderDefault)
+                        GroundedProfileMenuItem(Icons.Default.Help, "Help Center", "FAQs and support")
+                        HorizontalDivider(color = GroundedColors.BorderDefault)
+                        GroundedProfileMenuItem(Icons.Default.Description, "Terms & Conditions", "Legal stuff")
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        navController.navigate("login") {
+                            popUpTo("main") { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GroundedColors.BarkMid
+                    )
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Logout",
+                        tint = Color(0xFFF5E8CC),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "LOGOUT",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 2.sp,
+                        color = Color(0xFFF5E8CC)
+                    )
+                }
+
+                Spacer(Modifier.height(32.dp))
+            }
         }
     }
 }
 
+// ── Helper Components (Grounded Theme) ───────────────────────────────────────
+
 @Composable
-fun ProfileMenuItem(emoji: String, title: String, subtitle: String) {
-    Row(
+private fun LeafShape(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(topStartPercent = 50, bottomEndPercent = 50))
+            .background(GroundedColors.LeafOverlay)
+    )
+}
+
+@Composable
+private fun HorizontalDivider(color: Color) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* TODO */ }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(emoji, fontSize = 24.sp)
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Icon(Icons.Default.ChevronRight, contentDescription = null)
-    }
+            .height(1.dp)
+            .background(color)
+    )
 }
 
 @Composable
-fun ComicHeader(
+fun GroundedHeader(
     userName: String,
     userRole: String,
-    comicShake: Float,
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .graphicsLayer(translationY = comicShake),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column {
-            Text(
-                text = "Welcome back,",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = userName,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        
-        Row {
-            IconButton(onClick = onNotificationClick) {
-                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Welcome back,",
+                    fontSize = 12.sp,
+                    color = GroundedColors.TextMuted,
+                    letterSpacing = 1.sp
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = userName,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = GroundedColors.TextPrimary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        Icons.Default.School,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = GroundedColors.ClayWarm
+                    )
+                }
             }
-            IconButton(onClick = onProfileClick) {
-                Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+
+            Row {
+                IconButton(onClick = onNotificationClick) {
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = "Notifications",
+                        tint = GroundedColors.BarkMid
+                    )
+                }
+                IconButton(onClick = onProfileClick) {
+                    Icon(
+                        Icons.Default.AccountCircle,
+                        contentDescription = "Profile",
+                        tint = GroundedColors.BarkMid
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun ComicStatsPanel(
+fun GroundedStatsPanel(
     listingsCount: Int,
     favoritesCount: Int,
     visitsCount: Int,
@@ -681,9 +807,9 @@ fun ComicStatsPanel(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -691,26 +817,41 @@ fun ComicStatsPanel(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItem("🏠", listingsCount.toString(), "Listings")
-            StatItem("❤️", favoritesCount.toString(), "Favorites")
-            StatItem("👀", visitsCount.toString(), "Visits")
+            GroundedStatItem(Icons.Default.Home, count = listingsCount.toString(), label = "Listings")
+            GroundedStatItem(Icons.Default.Favorite, count = favoritesCount.toString(), label = "Favorites")
+            GroundedStatItem(Icons.Default.Visibility, count = visitsCount.toString(), label = "Visits")
         }
     }
 }
 
 @Composable
-fun StatItem(emoji: String, count: String, label: String) {
+fun GroundedStatItem(icon: ImageVector, count: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(emoji, fontSize = 24.sp)
-        Text(count, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = GroundedColors.BarkMid
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            count,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = GroundedColors.ClayWarm
+        )
+        Text(
+            label,
+            fontSize = 11.sp,
+            color = GroundedColors.TextMuted,
+            letterSpacing = 0.5.sp
+        )
     }
 }
 
 @Composable
-fun SectionHeader(
+fun GroundedSectionHeader(
     title: String,
-    emoji: String,
     modifier: Modifier = Modifier,
     actionText: String? = null,
     onActionClick: (() -> Unit)? = null
@@ -720,89 +861,123 @@ fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(emoji, fontSize = 20.sp)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = GroundedColors.ClayWarm,
+            letterSpacing = 2.sp
+        )
         if (actionText != null && onActionClick != null) {
             TextButton(onClick = onActionClick) {
-                Text(actionText)
+                Text(
+                    actionText,
+                    fontSize = 11.sp,
+                    color = GroundedColors.BarkMid,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
 }
 
 @Composable
-fun ComicCategoryChip(
+fun GroundedCategoryChip(
     category: String,
-    emoji: String,
+    icon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) GroundedColors.ClayWarm else GroundedColors.CreamField,
+        border = BorderStroke(
+            1.dp,
+            if (isSelected) GroundedColors.ClayWarm else GroundedColors.BorderDefault
+        )
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(emoji)
+            Icon(
+                imageVector = icon,
+                contentDescription = category,
+                modifier = Modifier.size(16.dp),
+                tint = if (isSelected) Color(0xFFF5E8CC) else GroundedColors.BarkMid
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = category,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                text = category.uppercase(),
+                fontSize = 11.sp,
+                letterSpacing = 1.sp,
+                color = if (isSelected) Color(0xFFF5E8CC) else GroundedColors.TextSecondary,
+                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
             )
         }
     }
 }
 
 @Composable
-fun ComicListingCard(
+fun GroundedListingCardHorizontal(
     listing: Listing,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .width(280.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, Color.Black)
+            .width(260.dp)
+            .clickable(onClick = onClick)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = Color(0xFF1E1208).copy(alpha = 0.15f),
+                spotColor = Color(0xFF1E1208).copy(alpha = 0.1f)
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .height(3.dp)
+                    .background(topStripeGradient)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .background(GroundedColors.CreamField),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(64.dp))
+                Icon(
+                    Icons.Default.Home,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
+                    tint = GroundedColors.TextMuted
+                )
             }
-            
+
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
                     text = listing.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    color = GroundedColors.TextPrimary
+                )
+                Text(
+                    text = "₱${listing.price}/month",
+                    color = GroundedColors.ClayWarm,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    maxLines = 1
+                    fontSize = 14.sp
                 )
                 Text(
-                    text = "₱${listing.price}",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    text = "📍 ${listing.location}",
-                    style = MaterialTheme.typography.bodySmall
+                    text = listing.location,
+                    fontSize = 11.sp,
+                    color = GroundedColors.TextMuted
                 )
             }
         }
@@ -810,38 +985,59 @@ fun ComicListingCard(
 }
 
 @Composable
-fun ComicVerticalCard(
+fun GroundedListingCardVertical(
     listing: Listing,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = Color(0xFF1E1208).copy(alpha = 0.1f),
+                spotColor = Color(0xFF1E1208).copy(alpha = 0.08f)
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                    .height(3.dp)
+                    .background(topStripeGradient)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(GroundedColors.CreamField),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Apartment, contentDescription = null, modifier = Modifier.size(48.dp))
+                Icon(
+                    Icons.Default.Apartment,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = GroundedColors.TextMuted
+                )
             }
-            
-            Column(modifier = Modifier.padding(8.dp)) {
+
+            Column(modifier = Modifier.padding(10.dp)) {
                 Text(
                     text = listing.title,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                    style = MaterialTheme.typography.titleSmall
+                    fontSize = 13.sp,
+                    color = GroundedColors.TextPrimary
                 )
                 Text(
                     text = "₱${listing.price}",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
+                    color = GroundedColors.ClayWarm,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
                 )
             }
         }
@@ -849,17 +1045,162 @@ fun ComicVerticalCard(
 }
 
 @Composable
-fun EmptyComicCard(text: String, modifier: Modifier = Modifier) {
+fun GroundedEmptyCard(text: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant)
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard),
+        border = BorderStroke(1.dp, GroundedColors.BorderDefault)
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(32.dp).fillMaxWidth(),
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge
+            fontSize = 13.sp,
+            color = GroundedColors.TextMuted
+        )
+    }
+}
+
+@Composable
+fun GroundedFilterCard(
+    title: String,
+    icon: ImageVector,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = GroundedColors.ClayWarm
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = GroundedColors.ClayWarm,
+                    letterSpacing = 1.5.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+fun GroundedFilterChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = isSelected,
+        onClick = onClick,
+        label = {
+            Text(
+                label,
+                fontSize = 12.sp,
+                color = if (isSelected) Color(0xFFF5E8CC) else GroundedColors.TextSecondary
+            )
+        },
+        modifier = Modifier.height(36.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = GroundedColors.ClayWarm,
+            selectedLabelColor = Color(0xFFF5E8CC),
+            containerColor = GroundedColors.CreamField,
+            labelColor = GroundedColors.TextSecondary
+        )
+    )
+}
+
+@Composable
+fun GroundedProfileStatCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = GroundedColors.BarkMid
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = value,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = GroundedColors.ClayWarm
+            )
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = GroundedColors.TextMuted,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun GroundedProfileMenuItem(icon: ImageVector, title: String, subtitle: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { /* TODO */ }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = GroundedColors.BarkMid
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = GroundedColors.TextPrimary
+            )
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = GroundedColors.TextMuted
+            )
+        }
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = GroundedColors.TextMuted
         )
     }
 }
