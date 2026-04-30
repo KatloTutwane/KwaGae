@@ -1,39 +1,38 @@
 package com.example.kwagae.data.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import com.example.kwagae.data.models.User
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
 
-    // ── Auth ──
-    @Insert(onConflict = OnConflictStrategy.ABORT) // fails if email already exists
-    suspend fun insertUser(user: User): Long
+    // ── Reads ─────────────────────────────────────────────────────────────────
 
-    @Query("SELECT * FROM users WHERE email = :email AND password = :password LIMIT 1")
-    suspend fun login(email: String, password: String): User?
+    @Query("SELECT * FROM users WHERE email = :email AND passwordHash = :passwordHash LIMIT 1")
+    suspend fun login(email: String, passwordHash: String): User?
 
-    // ── Checks ──
-    @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
-    suspend fun getUserByEmail(email: String): User?  // duplicate email check
+    @Query("SELECT * FROM users WHERE firebaseUid = :uid LIMIT 1")
+    suspend fun getByFirebaseUid(uid: String): User?
 
     @Query("SELECT * FROM users WHERE userId = :id LIMIT 1")
-    suspend fun getUserById(id: Long): User?           // load profile by session
+    suspend fun getById(id: Long): User?
 
-    // ── Counts (separate so student cap works correctly) ──
-    @Query("SELECT COUNT(*) FROM users WHERE role = 'student'")
-    suspend fun getStudentCount(): Int                 // was counting ALL users
+    @Query("SELECT * FROM users WHERE pendingSync = 1")
+    suspend fun getPendingSyncUsers(): List<User>
 
-    @Query("SELECT COUNT(*) FROM users WHERE role = 'provider'")
-    suspend fun getProviderCount(): Int
+    // ── Writes ────────────────────────────────────────────────────────────────
 
-    // ── Provider specific ──
-    @Query("SELECT * FROM users WHERE role = 'provider'")
-    suspend fun getAllProviders(): List<User>
+    /** Insert or replace — used when pulling from Firestore */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(user: User): Long
 
-    @Query("SELECT * FROM users")
-    suspend fun getAllUsers(): List<User>
+    @Update
+    suspend fun update(user: User)
+
+    @Query("UPDATE users SET pendingSync = 0, firebaseUid = :uid WHERE userId = :localId")
+    suspend fun markSynced(localId: Long, uid: String)
+
+    @Query("DELETE FROM users WHERE firebaseUid = :uid")
+    suspend fun deleteByFirebaseUid(uid: String)
 }

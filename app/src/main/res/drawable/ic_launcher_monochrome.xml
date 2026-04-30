@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Monochrome foreground for Android 13+ themed icons.
+    System tints this with the wallpaper color — keep it purely white paths.
+    Place in: res/drawable/ic_launcher_monochrome.xml
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Door frame left post -->
+    <path
+        android:pathData="M20,30 L26,30 L26,90 L20,90 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Door frame right post -->
+    <path
+        android:pathData="M82,30 L88,30 L88,90 L82,90 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Door frame top header -->
+    <path
+        android:pathData="M20,26 L88,26 L88,32 L20,32 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Threshold -->
+    <path
+        android:pathData="M20,88 L88,88 L88,92 L20,92 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Door panel (open) -->
+    <path
+        android:pathData="M26,32 L56,32 L56,87 L26,87 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.45" />
+
+    <!-- Person: head -->
+    <path
+        android:pathData="M52,47 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Person: body -->
+    <path
+        android:pathData="M54,60 Q54,55 62,55 Q70,55 70,60 L70,80 Q70,83 62,83 Q54,83 54,80 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Person: left leg -->
+    <path
+        android:pathData="M56,80 Q56,93 59,93 Q61,93 61,80 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Person: right leg -->
+    <path
+        android:pathData="M63,80 Q63,93 66,93 Q68,93 68,80 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Person: left arm -->
+    <path
+        android:pathData="M54,63 Q49,70 51,75 Q53,76 55,74 Q56,68 56,63 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Top accent stripe -->
+    <path
+        android:pathData="M0,0 L108,0 L108,4 L0,4 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.7" />
+
+</vector>

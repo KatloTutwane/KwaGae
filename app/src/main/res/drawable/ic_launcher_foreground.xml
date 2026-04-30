@@ -1,30 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Kwagae Launcher Icon — Foreground
+    Person stepping through a doorway
+    Design canvas: 108 × 108dp (foreground layer in adaptive icon)
+    Safe zone for icon display: inner 72dp centred (18dp margin each side)
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+
+    <!-- ── Floor strip ──────────────────────────────────────────────────── -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M0,88 L108,88 L108,108 L0,108 Z"
+        android:fillColor="#3B2416" />
+
+    <!-- Floor / threshold line -->
+    <path
+        android:pathData="M0,88 L108,88"
+        android:strokeColor="#A07848"
+        android:strokeWidth="0.8"
+        android:fillColor="#00000000" />
+
+    <!-- ── Door warm glow (light spilling from inside) ──────────────────── -->
+    <path
+        android:pathData="M26,32 L64,32 L64,89 L26,89 Z"
+        android:fillColor="#F5C97A"
+        android:fillAlpha="0.55" />
+
+    <!-- ── Door frame: top header ────────────────────────────────────────── -->
+    <path
+        android:pathData="M22,28 Q22,26 24,26 L84,26 Q86,26 86,28 L86,34 L22,34 Z"
+        android:fillColor="#7A5C38" />
+
+    <!-- Door frame: left side post -->
+    <path
+        android:pathData="M20,30 L26,30 L26,90 L20,90 Z"
+        android:fillColor="#7A5C38" />
+
+    <!-- Door frame: right side post -->
+    <path
+        android:pathData="M82,30 L88,30 L88,90 L82,90 Z"
+        android:fillColor="#7A5C38" />
+
+    <!-- Frame outline stroke (outer border) -->
+    <path
+        android:pathData="M22,30 L86,30 L86,90 L22,90 Z"
+        android:strokeColor="#8B6A40"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000" />
+
+    <!-- Threshold bar -->
+    <path
+        android:pathData="M20,88 Q20,91 22,91 L86,91 Q88,91 88,88 L88,90 L20,90 Z"
+        android:fillColor="#6B4A28" />
+
+    <!-- ── Door panel (pushed open, angled inward) ───────────────────────── -->
+    <!-- Main panel face -->
+    <path
+        android:pathData="M26,32 L56,32 L56,87 L26,87 Z"
+        android:fillColor="#5C4033" />
+
+    <!-- Panel inset: top-left recess -->
+    <path
+        android:pathData="M29,36 L40,36 L40,52 L29,52 Z"
+        android:fillColor="#4A3028"
+        android:fillAlpha="0.65" />
+
+    <!-- Panel inset: top-right recess -->
+    <path
+        android:pathData="M43,36 L54,36 L54,52 L43,52 Z"
+        android:fillColor="#4A3028"
+        android:fillAlpha="0.65" />
+
+    <!-- Panel inset: bottom-left recess -->
+    <path
+        android:pathData="M29,56 L40,56 L40,76 L29,76 Z"
+        android:fillColor="#4A3028"
+        android:fillAlpha="0.65" />
+
+    <!-- Panel inset: bottom-right recess -->
+    <path
+        android:pathData="M43,56 L54,56 L54,76 L43,76 Z"
+        android:fillColor="#4A3028"
+        android:fillAlpha="0.65" />
+
+    <!-- Door knob outer -->
+    <path
+        android:pathData="M56.5,63 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#C4874A" />
+
+    <!-- Door knob shine -->
+    <path
+        android:pathData="M56.5,63 m-1.2,0 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0"
+        android:fillColor="#E8A860" />
+
+    <!-- ── Person ─────────────────────────────────────────────────────────── -->
+
+    <!-- Ground shadow -->
+    <path
+        android:pathData="M51,92 Q62,95 73,92 Q62,90 51,92"
+        android:fillColor="#2A1A0E"
+        android:fillAlpha="0.5" />
+
+    <!-- Left leg -->
+    <path
+        android:pathData="M56,80 Q56,93 58.5,93 Q61,93 61,80 Z"
+        android:fillColor="#8B6A40" />
+
+    <!-- Left shoe -->
+    <path
+        android:pathData="M54,91 Q55,94 62,94 Q62,91 54,91"
+        android:fillColor="#5C3D20" />
+
+    <!-- Right leg -->
+    <path
+        android:pathData="M63,80 Q63,93 65.5,93 Q68,93 68,80 Z"
+        android:fillColor="#8B6A40" />
+
+    <!-- Right shoe -->
+    <path
+        android:pathData="M62,91 Q63,94 70,94 Q70,91 62,91"
+        android:fillColor="#5C3D20" />
+
+    <!-- Torso / shirt -->
+    <path
+        android:pathData="M54,60 Q54,55 62,55 Q70,55 70,60 L70,80 Q70,83 62,83 Q54,83 54,80 Z"
+        android:fillColor="#A07848" />
+
+    <!-- Backpack -->
+    <path
+        android:pathData="M70,62 Q70,60 73,60 L76,60 Q77,60 77,62 L77,76 Q77,77 76,77 L73,77 Q70,77 70,76 Z"
+        android:fillColor="#6B4A28" />
+
+    <!-- Backpack strap detail -->
+    <path
+        android:pathData="M70,64 L77,64"
+        android:strokeColor="#5C3A1E"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000" />
+
+    <!-- Left arm (slightly forward) -->
+    <path
+        android:pathData="M54,63 Q49,68 50,75 Q52,76 54,75 Q55,68 56,63 Z"
+        android:fillColor="#C49060" />
+
+    <!-- Right arm (slightly back) -->
+    <path
+        android:pathData="M70,63 Q74,68 74,74 Q72,76 70,74 Q69,68 69,63 Z"
+        android:fillColor="#C49060" />
+
+    <!-- Neck -->
+    <path
+        android:pathData="M58,54 Q58,51 62,51 Q66,51 66,54 L66,60 Q66,62 62,62 Q58,62 58,60 Z"
+        android:fillColor="#D4A874" />
+
+    <!-- Head -->
+    <path
+        android:pathData="M52,47 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0"
+        android:fillColor="#D4A874" />
+
+    <!-- Hair -->
+    <path
+        android:pathData="M52,42 Q52,37 62,37 Q72,37 72,42 L72,46 Q64,43 52,46 Z"
+        android:fillColor="#3B2416" />
+
+    <!-- Left eye -->
+    <path
+        android:pathData="M57.3,46 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0"
+        android:fillColor="#3B2416" />
+
+    <!-- Right eye -->
+    <path
+        android:pathData="M64.3,46 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0"
+        android:fillColor="#3B2416" />
+
+    <!-- Smile -->
+    <path
+        android:pathData="M58.5,51 Q62,54.5 65.5,51"
+        android:strokeColor="#3B2416"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- ── Top moss accent stripe ──────────────────────────────────────────── -->
+    <path
+        android:pathData="M0,0 L108,0 L108,4 L0,4 Z"
+        android:fillColor="#8BA87A" />
+
+    <!-- Clay mid-stripe -->
+    <path
+        android:pathData="M0,0 L72,0 L72,4 L0,4 Z"
+        android:fillColor="#C4874A"
+        android:fillAlpha="0.6" />
+
 </vector>
