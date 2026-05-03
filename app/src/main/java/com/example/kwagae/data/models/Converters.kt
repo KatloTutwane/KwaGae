@@ -1,6 +1,7 @@
 package com.example.kwagae.data.converters
 
 import androidx.room.TypeConverter
+import java.util.Date
 
 class Converters {
 
@@ -13,4 +14,14 @@ class Converters {
     fun toStringList(value: String?): List<String> =
         if (value.isNullOrBlank()) emptyList()
         else value.split(",").map { it.trim() }
+
+    @TypeConverter
+    fun fromTimestamp(value: Long?): Date? {
+        return value?.let { Date(it) }
+    }
+
+    @TypeConverter
+    fun dateToTimestamp(date: Date?): Long? {
+        return date?.time
+    }
 }

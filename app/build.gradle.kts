@@ -3,6 +3,10 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+
+    id("org.jetbrains.kotlin.kapt")
+    id("com.google.gms.google-services")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -28,12 +32,19 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
+    }
+
+    // Enable kapt for Hilt annotation processing
+    kapt {
+        correctErrorTypes = true
     }
 }
 
@@ -55,17 +66,30 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.firebase.firestore.ktx)
-    
+    implementation(libs.androidx.compose.ui.unit)
+
     // Coil
     implementation(libs.coil.compose)
-    
+
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.compose.ui.unit)
     ksp(libs.androidx.room.compiler)
 
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // Hilt (Dependency Injection)
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-android-compiler:2.51.1")
+
+    // Coroutines (for Firebase .await())
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

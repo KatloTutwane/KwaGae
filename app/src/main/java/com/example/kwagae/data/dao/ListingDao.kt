@@ -7,13 +7,27 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ListingDao {
 
-    // ── Reads (reactive Flow for UI) ──────────────────────────────────────────
+    // ── Reactive Flow queries (for UI / real-time updates) ────────────────────
 
     @Query("SELECT * FROM listings WHERE isAvailable = 1 ORDER BY syncedAt DESC")
     fun getAvailableListings(): Flow<List<Listing>>
 
     @Query("SELECT * FROM listings ORDER BY syncedAt DESC")
-    fun getAllListings(): Flow<List<Listing>>
+    fun getAllListingsFlow(): Flow<List<Listing>>
+
+    @Query("""
+        SELECT * FROM listings
+        WHERE isAvailable = 1
+          AND (title LIKE '%' || :query || '%' OR location LIKE '%' || :query || '%')
+        ORDER BY price ASC
+    """)
+    fun searchListings(query: String): Flow<List<Listing>>
+
+    // ── One-shot suspend queries (for coroutine / LaunchedEffect use) ──────────
+
+    // ADD THIS — MainScreen calls db.listingDao().getAllListings() in a coroutine
+    @Query("SELECT * FROM listings ORDER BY syncedAt DESC")
+    suspend fun getAllListings(): List<Listing>
 
     @Query("SELECT * FROM listings WHERE listingId = :id LIMIT 1")
     suspend fun getById(id: Long): Listing?
@@ -24,17 +38,8 @@ interface ListingDao {
     @Query("SELECT * FROM listings WHERE pendingSync = 1")
     suspend fun getPendingSyncListings(): List<Listing>
 
-    @Query("""
-        SELECT * FROM listings
-        WHERE isAvailable = 1
-          AND (title LIKE '%' || :query || '%' OR location LIKE '%' || :query || '%')
-        ORDER BY price ASC
-    """)
-    fun searchListings(query: String): Flow<List<Listing>>
-
     // ── Writes ────────────────────────────────────────────────────────────────
 
-    /** Upsert — used when pulling from Firestore snapshot */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(listing: Listing): Long
 

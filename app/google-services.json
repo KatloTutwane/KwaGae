@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "34293018555",
+    "project_id": "kwagae-e195b",
+    "storage_bucket": "kwagae-e195b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:34293018555:android:ccf73652a16ca485da9e9e",
+        "android_client_info": {
+          "package_name": "com.example.kwagae"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJraPzUt-dZWDw3NLahCd17qj_gzgQ8PU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

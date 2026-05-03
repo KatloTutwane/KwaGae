@@ -43,7 +43,7 @@ class ListingRepository @Inject constructor(
         listingDao.getAvailableListings()
 
     fun getAllListings(): Flow<List<Listing>> =
-        listingDao.getAllListings()
+        listingDao.getAllListingsFlow()
 
     fun searchListings(query: String): Flow<List<Listing>> =
         listingDao.searchListings(query)
@@ -77,12 +77,12 @@ class ListingRepository @Inject constructor(
                     // Merge: preserve local Room IDs for docs we already have
                     listings.forEach { remote ->
                         val existing = listingDao.getByFirestoreId(remote.firestoreId)
-                        listingDao.insert(remote.copy(userId = existing?.listingId ?: 0))
+                        listingDao.insert(remote.copy(listingId = existing?.listingId ?: 0))
                     }
 
                     // Remove local listings that were deleted remotely
                     val remoteIds = listings.map { it.firestoreId }.toSet()
-                    listingDao.getAllListingsOnce().forEach { local ->
+                    listingDao.getAllListings().forEach { local ->
                         if (local.firestoreId.isNotEmpty() && local.firestoreId !in remoteIds) {
                             listingDao.deleteByFirestoreId(local.firestoreId)
                         }
@@ -176,9 +176,3 @@ class ListingRepository @Inject constructor(
         }
     }
 }
-
-// ── Extension needed for listener merge logic ─────────────────────────────────
-// Add this query to ListingDao if not already present:
-//   @Query("SELECT * FROM listings") suspend fun getAllListingsOnce(): List<Listing>
-private suspend fun ListingDao.getAllListingsOnce(): List<Listing> =
-    getPendingSyncListings() // temporary — replace with the actual DAO query above

@@ -30,8 +30,43 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.kwagae.data.database.AppDatabase
-import com.example.kwagae.ui.theme.GroundedColors
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
+
+// ── Password hashing helper ──────────────────────────────────────────────────
+private fun hashPassword(password: String): String {
+    val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+
+// ── Grounded Earth Palette ────────────────────────────────────────────────────
+private object GroundedColors {
+    val EspressoDeep    = Color(0xFF3B2416)   // darkest brown – text, logo bg
+    val BarkMid         = Color(0xFF5C4033)   // medium bark – button start
+    val ClayWarm        = Color(0xFF8B6A40)   // warm clay – button end, borders
+    val SandLight       = Color(0xFFA07848)   // light sand – button accent
+    val CreamCard       = Color(0xFFFCF7EE)   // card background
+    val CreamField      = Color(0xFFFBF6EE)   // input field background
+    val CreamFocus      = Color(0xFFFDF9F3)   // focused input background
+    val BorderDefault   = Color(0xFFD4B896)   // warm tan border
+    val BorderFocus     = Color(0xFF8B6A40)   // clay border on focus
+    val TextPrimary     = Color(0xFF3B2416)   // same as EspressoDeep
+    val TextSecondary   = Color(0xFF8B6A50)   // muted brown
+    val TextHint        = Color(0xFFC4A882)   // light hint / placeholder
+    val TextMuted       = Color(0xFFB09070)   // divider label, badge text
+    val AccentMoss      = Color(0xFF8BA87A)   // moss green (top stripe start)
+    val AccentClay      = Color(0xFFC4874A)   // stripe mid
+    val AccentBark      = Color(0xFF8B6A40)   // stripe end
+
+    // Background gradient stops (top → bottom, dark soil to warm earth)
+    val BgTop    = Color(0xFF3B2F1E)
+    val BgMid1   = Color(0xFF5C4033)
+    val BgMid2   = Color(0xFF7A5C40)
+    val BgBottom = Color(0xFFA0784E)
+
+    // Leaf overlay
+    val LeafOverlay = Color(0xFF8BA87A).copy(alpha = 0.07f)
+}
 
 // ── Brush helpers ─────────────────────────────────────────────────────────────
 private val backgroundGradient = Brush.verticalGradient(
@@ -218,7 +253,7 @@ fun LoginScreen(navController: NavController) {
                                 isLoading = true
                                 scope.launch {
                                     val db   = AppDatabase.getDatabase(context)
-                                    val user = db.userDao().login(email, password)
+                                    val user = db.userDao().login(email, hashPassword(password))
                                     if (user != null) {
                                         val prefs = context.getSharedPreferences(
                                             "kwagae_prefs", Context.MODE_PRIVATE
@@ -226,19 +261,14 @@ fun LoginScreen(navController: NavController) {
                                         prefs.edit()
                                             .putLong("user_id", user.userId)
                                             .putString("student_id", user.studentId)
-                                            .putString("user_name", user.fullName) // Also save the name
                                             .apply()
-
                                         Toast.makeText(
                                             context,
                                             "Welcome ${user.fullName}",
                                             Toast.LENGTH_SHORT
                                         ).show()
-
                                         isLoading = false
-
-                                        // 🔑 KEY CHANGE: Pass the userId to MainScreen
-                                        navController.navigate("main/${user.userId}") {
+                                        navController.navigate("main") {
                                             popUpTo("login") { inclusive = true }
                                         }
                                     } else {
@@ -321,7 +351,7 @@ fun LoginScreen(navController: NavController) {
                 ) {
                     GroundedSocialButton(
                         text = "Google",
-                        icon = Icons.Default.Email,
+                        icon = Icons.Default.Email, // swap with your Google SVG asset
                         onClick = {
                             Toast.makeText(context, "Google Login", Toast.LENGTH_SHORT).show()
                         },
@@ -329,7 +359,7 @@ fun LoginScreen(navController: NavController) {
                     )
                     GroundedSocialButton(
                         text = "Apple",
-                        icon = Icons.Default.Lock,
+                        icon = Icons.Default.Lock,  // swap with your Apple SVG asset
                         onClick = {
                             Toast.makeText(context, "Apple Login", Toast.LENGTH_SHORT).show()
                         },
@@ -483,7 +513,11 @@ private fun GroundedTextField(
                 focusedBorderColor        = GroundedColors.BorderFocus,
                 cursorColor               = GroundedColors.ClayWarm,
                 unfocusedLeadingIconColor = GroundedColors.TextMuted,
-                focusedLeadingIconColor   = GroundedColors.ClayWarm
+                focusedLeadingIconColor   = GroundedColors.ClayWarm,
+                // Fix white text input - make it dark brown
+                focusedTextColor          = GroundedColors.TextPrimary,
+                unfocusedTextColor        = GroundedColors.TextPrimary,
+                disabledTextColor         = GroundedColors.TextSecondary
             )
         )
     }
@@ -547,20 +581,6 @@ private fun TrustBadge() {
         )
         TrustDot()
     }
-}
-
-/** Horizontal divider line */
-@Composable
-private fun HorizontalDivider(
-    modifier: Modifier = Modifier,
-    color: Color = GroundedColors.BorderDefault
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(color)
-    )
 }
 
 @Composable

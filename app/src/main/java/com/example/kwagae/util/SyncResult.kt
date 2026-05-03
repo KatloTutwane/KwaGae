@@ -1,4 +1,4 @@
-package com.example.kwagae.util
+package com.example.kwagae.data.util
 
 /** Wraps the result of any Room ↔ Firestore sync operation */
 sealed class SyncResult<out T> {

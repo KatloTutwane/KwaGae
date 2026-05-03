@@ -2,7 +2,6 @@ package com.example.kwagae.data.dao
 
 import androidx.room.*
 import com.example.kwagae.data.models.User
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
@@ -21,9 +20,25 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE pendingSync = 1")
     suspend fun getPendingSyncUsers(): List<User>
 
+    @Query("SELECT * FROM users")
+    suspend fun getAllUsers(): List<User>
+
+    // ── RegisterScreen needs these three ──────────────────────────────────────
+
+    // 1. Check if email already registered
+    @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
+    suspend fun getUserByEmail(email: String): User?
+
+    // 2. Count users by role for generating IDs like KW1, PR2
+    @Query("SELECT COUNT(*) FROM users WHERE role = :role")
+    suspend fun getStudentCount(role: String = "student"): Int
+
+    // 3. Named insert to match RegisterScreen's call
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUser(user: User): Long
+
     // ── Writes ────────────────────────────────────────────────────────────────
 
-    /** Insert or replace — used when pulling from Firestore */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(user: User): Long
 

@@ -7,41 +7,26 @@ import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
-/**
- * User entity — stored in Room locally and mirrored in Firestore under:
- *   /users/{firebaseUid}
- *
- * Sync strategy:
- *  - On registration: write to Room first, then push to Firestore.
- *  - On login: authenticate with Firebase Auth, then pull Firestore doc to Room.
- *  - [pendingSync] = true flags rows that haven't been pushed to Firestore yet
- *    (e.g. created while offline).
- */
 @Entity(tableName = "users")
 data class User(
 
-    // ── Local Room PK ─────────────────────────────────────────────────────────
     @PrimaryKey(autoGenerate = true)
-    @get:Exclude                        // don't push Room's auto-id to Firestore
+    @get:Exclude
     val userId: Long = 0,
 
-    // ── Firestore document ID (Firebase Auth UID) ─────────────────────────────
     @DocumentId
     val firebaseUid: String = "",
 
-    // ── Core fields ───────────────────────────────────────────────────────────
     val fullName: String = "",
     val email: String = "",
     val studentId: String = "",
 
-    /**
-     * Password hash — stored locally only for offline login fallback.
-     * Never pushed to Firestore (use Firebase Auth for real authentication).
-     */
+    // ── ADD THIS — MainScreen reads user.role to show "STUDENT HOMESEEKER" etc.
+    val role: String = "student",   // "student" | "landlord"
+
     @get:Exclude
     val passwordHash: String = "",
 
-    // ── Sync metadata ─────────────────────────────────────────────────────────
     @ServerTimestamp
     val syncedAt: Date? = null,
 
