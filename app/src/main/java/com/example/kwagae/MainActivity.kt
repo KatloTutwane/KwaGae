@@ -12,12 +12,22 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.kwagae.data.DatabaseSeeder
 import com.example.kwagae.ui.theme.KwaGaeTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Seed 50 students + 50 listings on first launch (runs once only)
+        CoroutineScope(Dispatchers.IO).launch {
+            DatabaseSeeder.seedIfNeeded(applicationContext)
+        }
+
         setContent {
             KwaGaeTheme {
                 KwaGaeApp()
@@ -32,32 +42,22 @@ fun KwaGaeApp() {
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         NavHost(
-            navController = navController,
+            navController    = navController,
             startDestination = "login",
-            modifier = Modifier.padding(innerPadding)
+            modifier         = Modifier.padding(innerPadding)
         ) {
-            composable("login") { LoginScreen(navController) }
+            composable("login")    { LoginScreen(navController) }
             composable("register") { RegisterScreen(navController) }
-            composable("main") { MainScreen(navController) }
-            // Stub these screens if they don't exist yet to fix build
+            composable("main")     { MainScreen(navController) }
+
             composable("listing_detail/{listingId}") { backStackEntry ->
                 val listingId = backStackEntry.arguments?.getString("listingId")?.toLongOrNull() ?: 0L
                 ListingDetailScreen(navController, listingId)
             }
-            composable("reservation/{listingId}") { backStackEntry ->
-                val listingId = backStackEntry.arguments?.getString("listingId")?.toLongOrNull() ?: 0L
-                ReservationScreen(navController, listingId)
-            }
+
+            // ── Chat feature ──────────────────────────────────────────────────
+            composable("chat")          { ChatScreen(navController) }
+            composable("conversations") { ConversationsScreen(navController) }
         }
     }
-}
-
-@Composable
-fun ListingDetailScreen(navController: androidx.navigation.NavController, listingId: Long) {
-    // Placeholder
-}
-
-@Composable
-fun ReservationScreen(navController: androidx.navigation.NavController, listingId: Long) {
-    // Placeholder
 }

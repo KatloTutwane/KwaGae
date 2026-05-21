@@ -31,11 +31,15 @@ interface UserDao {
 
     // 2. Count users by role for generating IDs like KW1, PR2
     @Query("SELECT COUNT(*) FROM users WHERE role = :role")
-    suspend fun getStudentCount(role: String = "student"): Int
+    suspend fun getStudentCount(role: String): Int  // ✅ Removed default parameter
 
     // 3. Named insert to match RegisterScreen's call
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: User): Long
+
+    // 4. Bulk insert for DatabaseSeeder
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(users: List<User>)
 
     // ── Writes ────────────────────────────────────────────────────────────────
 

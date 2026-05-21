@@ -33,15 +33,30 @@ data class Listing(
     val title: String = "",
     val description: String = "",
     val location: String = "",
+
+    /** Property type — e.g. "House", "Apartment", "Studio", "Room", "Townhouse" */
+    val type: String = "",
+
+    /** Monthly rent in Botswana Pula (BWP) */
     val price: Double = 0.0,
+
+    /** Security deposit in BWP (typically 1–2 months rent) */
+    val depositAmount: Double = 0.0,
+
     val availabilityDate: String = "",
     val isAvailable: Boolean = true,
 
     /** Comma-separated string in Room, converted by [Converters]; List<String> in Firestore */
     val amenities: String = "",
 
-    /** Firebase Auth UID of the landlord who posted this listing */
+    /** URL of the listing's primary image (loaded with Coil) */
+    val imageUrl: String = "",
+
+    /** Firebase Auth UID / studentId of the landlord who posted this listing */
     val ownerUid: String = "",
+
+    /** Display name of the provider / landlord for use in the chat UI */
+    val providerName: String = "",
 
     // ── Sync metadata ─────────────────────────────────────────────────────────
     @ServerTimestamp

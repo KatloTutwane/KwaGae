@@ -14,37 +14,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.kwagae.data.database.AppDatabase
 import com.example.kwagae.data.models.Listing
+import com.example.kwagae.ui.components.*   // ← all shared widgets live here
 import com.example.kwagae.ui.theme.GroundedColors
-import kotlinx.coroutines.launch
-
-// ── Brush helpers (matching login screen) ────────────────────────────────────
-private val backgroundGradient = Brush.verticalGradient(
-    colors = listOf(
-        GroundedColors.BgTop,
-        GroundedColors.BgMid1,
-        GroundedColors.BgMid2,
-        GroundedColors.BgBottom
-    )
-)
-
-private val topStripeGradient = Brush.horizontalGradient(
-    colors = listOf(
-        GroundedColors.AccentMoss,
-        GroundedColors.AccentClay,
-        GroundedColors.AccentBark
-    )
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +34,6 @@ fun ListingsScreen(navController: NavController) {
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         val database = AppDatabase.getDatabase(context)
@@ -70,16 +49,15 @@ fun ListingsScreen(navController: NavController) {
         listings.filter {
             it.title.contains(searchQuery, ignoreCase = true) ||
                     it.location.contains(searchQuery, ignoreCase = true)
-            // Removed 'description' as it doesn't exist in the Listing model
         }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundGradient)
+            .background(GroundedColors.backgroundGradient)
     ) {
-        // Decorative leaf shapes (matching login)
+        // Decorative leaf shapes
         LeafShape(
             modifier = Modifier
                 .size(250.dp)
@@ -91,203 +69,221 @@ fun ListingsScreen(navController: NavController) {
                 .offset(x = 240.dp, y = 800.dp)
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+        
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // Header with gradient stripe
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .background(topStripeGradient)
-            )
 
-            // Title section
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "FIND YOUR",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = GroundedColors.ClayWarm,
-                    letterSpacing = 3.sp
-                )
-                Text(
-                    text = "GROUNDED HOME",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GroundedColors.TextPrimary,
-                    letterSpacing = 1.sp
+            // ── Header stripe ─────────────────────────────────────────────────
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(GroundedColors.topStripeGradient)
                 )
             }
 
-            // Search and Filter section
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        ambientColor = Color(0xFF1E1208).copy(alpha = 0.2f),
-                        spotColor = Color(0xFF1E1208).copy(alpha = 0.15f)
-                    ),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard)
-            ) {
+            // ── Title section ─────────────────────────────────────────────────
+            item {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    GroundedSearchField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = "Search by title or location..."
+                    Text(
+                        text = "FIND YOUR",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = GroundedColors.ClayWarm,
+                        letterSpacing = 3.sp
                     )
+                    Text(
+                        text = "GROUNDED HOME",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = GroundedColors.TextPrimary,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
 
-                    Spacer(Modifier.height(8.dp))
+            // ── Search and Filter card ────────────────────────────────────────
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF1E1208).copy(alpha = 0.2f),
+                            spotColor = Color(0xFF1E1208).copy(alpha = 0.15f)
+                        ),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        GroundedSearchField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = "Search by title or location..."
+                        )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        TextButton(
-                            onClick = { showFilters = !showFilters },
-                            modifier = Modifier.weight(1f)
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(
-                                imageVector = if (showFilters) Icons.Default.FilterAltOff else Icons.Default.FilterAlt,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = GroundedColors.BarkMid
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = if (showFilters) "Hide Filters" else "Filters",
-                                fontSize = 12.sp,
-                                color = GroundedColors.BarkMid
-                            )
+                            TextButton(
+                                onClick = { showFilters = !showFilters },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (showFilters) Icons.Default.FilterAltOff else Icons.Default.FilterAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = GroundedColors.BarkMid
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = if (showFilters) "Hide Filters" else "Filters",
+                                    fontSize = 12.sp,
+                                    color = GroundedColors.BarkMid
+                                )
+                            }
+
+                            TextButton(
+                                onClick = { searchQuery = "" },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "Clear Search",
+                                    fontSize = 12.sp,
+                                    color = GroundedColors.ClayWarm
+                                )
+                            }
                         }
 
-                        TextButton(
-                            onClick = { searchQuery = "" },
-                            modifier = Modifier.weight(1f)
+                        AnimatedVisibility(
+                            visible = showFilters,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
                         ) {
-                            Text(
-                                text = "Clear Search",
-                                fontSize = 12.sp,
-                                color = GroundedColors.ClayWarm
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = showFilters,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        Column {
-                            HorizontalDivider(
-                                color = GroundedColors.BorderDefault,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                            Text(
-                                text = "PRICE RANGE",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = GroundedColors.ClayWarm,
-                                letterSpacing = 1.5.sp
-                            )
-                            // Price filter slider could be added here
-                            Text(
-                                text = "More filters coming soon...",
-                                fontSize = 11.sp,
-                                color = GroundedColors.TextMuted,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
+                            Column {
+                                GroundedDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                Text(
+                                    text = "PRICE RANGE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = GroundedColors.ClayWarm,
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "More filters coming soon...",
+                                    fontSize = 11.sp,
+                                    color = GroundedColors.TextMuted,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            item { Spacer(Modifier.height(16.dp)) }
 
-            // Results section
+            // ── Loading state ─────────────────────────────────────────────────
             if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 100.dp),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = GroundedColors.ClayWarm,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = "Finding your grounded home...",
-                            fontSize = 13.sp,
-                            color = GroundedColors.TextMuted,
-                            letterSpacing = 0.5.sp
-                        )
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 80.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = GroundedColors.ClayWarm,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = "Finding your grounded home...",
+                                fontSize = 13.sp,
+                                color = GroundedColors.TextMuted,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
                     }
                 }
+
+                // ── Empty state ───────────────────────────────────────────────────
             } else if (filteredListings.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 80.dp),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = GroundedColors.TextMuted
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = "No homes found",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = GroundedColors.TextSecondary
-                        )
-                        Text(
-                            text = "Try adjusting your search",
-                            fontSize = 13.sp,
-                            color = GroundedColors.TextMuted
-                        )
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 80.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = GroundedColors.TextMuted
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = "No homes found",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = GroundedColors.TextSecondary
+                            )
+                            Text(
+                                text = "Try adjusting your search",
+                                fontSize = 13.sp,
+                                color = GroundedColors.TextMuted
+                            )
+                        }
                     }
                 }
+
+                // ── Listing cards ─────────────────────────────────────────────────
             } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredListings) { listing ->
-                        GroundedListingCard(listing = listing, navController)
-                    }
-                    item { Spacer(Modifier.height(80.dp)) }
+                items(
+                    items = filteredListings,
+                    key = { it.listingId }
+                ) { listing ->
+                    GroundedListingCard(
+                        listing = listing,
+                        navController = navController,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
                 }
+
+                item { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
 }
 
+// ── Listing card ──────────────────────────────────────────────────────────────
+
 @Composable
-fun GroundedListingCard(listing: Listing, navController: NavController) {
+fun GroundedListingCard(
+    listing: Listing,
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable {
                 navController.navigate("listing_detail/${listing.listingId}")
@@ -308,14 +304,12 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
                     .fillMaxWidth()
                     .height(3.dp)
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .background(topStripeGradient)
+                    .background(GroundedColors.topStripeGradient)
             )
 
-            // Content
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                // Title and price row
+            Column(modifier = Modifier.padding(16.dp)) {
+
+                // ── Title and price row ───────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -331,14 +325,13 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Price badge
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = GroundedColors.ClayWarm.copy(alpha = 0.15f),
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         Text(
-                            text = "₱${listing.price}/mo",
+                            text = "BWP ${"%.0f".format(listing.price)}/mo",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = GroundedColors.ClayWarm,
@@ -349,7 +342,7 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
 
                 Spacer(Modifier.height(8.dp))
 
-                // Location with icon
+                // ── Location ──────────────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
@@ -367,7 +360,7 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
 
                 Spacer(Modifier.height(8.dp))
 
-                // Availability chip
+                // ── Availability + bed/bath row ───────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -397,7 +390,6 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
                         }
                     }
 
-                    // Bed/Bath info if available (using amenities parsing)
                     if (listing.amenities.isNotBlank()) {
                         val amenitiesList = listing.amenities.split(",").map { it.trim() }
                         val bedInfo = amenitiesList.find { it.contains("bed", ignoreCase = true) }
@@ -406,18 +398,10 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
                         if (bedInfo != null || bathInfo != null) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 bedInfo?.let {
-                                    Text(
-                                        text = "🛏️ $it",
-                                        fontSize = 11.sp,
-                                        color = GroundedColors.TextMuted
-                                    )
+                                    Text(text = "🛏️ $it", fontSize = 11.sp, color = GroundedColors.TextMuted)
                                 }
                                 bathInfo?.let {
-                                    Text(
-                                        text = "🚿 $it",
-                                        fontSize = 11.sp,
-                                        color = GroundedColors.TextMuted
-                                    )
+                                    Text(text = "🚿 $it", fontSize = 11.sp, color = GroundedColors.TextMuted)
                                 }
                             }
                         }
@@ -426,7 +410,7 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // Amenities chips
+                // ── Amenity chips ─────────────────────────────────────────────
                 if (listing.amenities.isNotBlank()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -466,11 +450,8 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // View details button
-                HorizontalDivider(
-                    color = GroundedColors.BorderDefault,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                // ── View details footer ───────────────────────────────────────
+                GroundedDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Row(
                     modifier = Modifier
@@ -499,80 +480,4 @@ fun GroundedListingCard(listing: Listing, navController: NavController) {
     }
 }
 
-// ── Supporting components (reused from login) ─────────────────────────────────
-
-@Composable
-private fun LeafShape(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(topStartPercent = 50, bottomEndPercent = 50))
-            .background(GroundedColors.LeafOverlay)
-    )
-}
-
-@Composable
-private fun HorizontalDivider(
-    modifier: Modifier = Modifier,
-    color: Color = GroundedColors.BorderDefault
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(color)
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GroundedSearchField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = {
-            Text(
-                text = placeholder,
-                color = GroundedColors.TextHint,
-                fontSize = 13.sp
-            )
-        },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search",
-                tint = GroundedColors.TextMuted,
-                modifier = Modifier.size(18.dp)
-            )
-        },
-        trailingIcon = if (value.isNotEmpty()) ({
-            IconButton(onClick = { onValueChange("") }) {
-                Icon(
-                    imageVector = Icons.Default.Clear,
-                    contentDescription = "Clear",
-                    tint = GroundedColors.TextMuted,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }) else null,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        singleLine = true,
-        textStyle = LocalTextStyle.current.copy(
-            fontSize = 14.sp,
-            color = GroundedColors.TextPrimary
-        ),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = GroundedColors.CreamField,
-            focusedContainerColor = GroundedColors.CreamFocus,
-            unfocusedBorderColor = GroundedColors.BorderDefault,
-            focusedBorderColor = GroundedColors.BorderFocus,
-            cursorColor = GroundedColors.ClayWarm,
-            unfocusedLeadingIconColor = GroundedColors.TextMuted,
-            focusedLeadingIconColor = GroundedColors.ClayWarm
-        )
-    )
-}
+// LeafShape, GroundedDivider, GroundedSearchField →  ui/components/AppComponents.kt

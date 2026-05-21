@@ -13,7 +13,7 @@ import com.example.kwagae.data.converters.Converters
 
 @Database(
     entities = [User::class, Listing::class],
-    version = 3,                        // bumped: added syncedAt & pendingSync fields
+    version = 7,                        // bumped: added providerName to Listing for chat feature
     exportSchema = false
 )
 @TypeConverters(Converters::class)      // for List<String> amenities, timestamps etc.
