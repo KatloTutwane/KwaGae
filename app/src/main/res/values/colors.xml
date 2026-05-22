@@ -7,4 +7,10 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- KwaGae brand colours -->
+    <color name="kwagae_cream">#F5E8CC</color>
+    <color name="kwagae_brown_dark">#3D2108</color>
+    <color name="kwagae_clay">#C05A2A</color>
+    <color name="kwagae_green">#4A7C3F</color>
 </resources>

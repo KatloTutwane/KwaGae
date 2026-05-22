@@ -2,6 +2,7 @@ package com.example.kwagae.data.repository
 
 import com.example.kwagae.data.models.ChatThread
 import com.example.kwagae.data.models.Message
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -63,21 +64,23 @@ object ChatRepository {
             return@callbackFlow
         }
         val field = if (role == "provider") "providerId" else "studentId"
-        val query = chats
-            .whereEqualTo(field, userId)
-            .orderBy("lastMessageAt", Query.Direction.DESCENDING)
 
-        val listener = query.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                // Emit empty list on error instead of crashing the coroutine
-                trySend(emptyList())
-                return@addSnapshotListener
+        // No orderBy here — that would require a composite index in Firestore.
+        // We sort client-side by lastMessageAt instead.
+        val listener = chats
+            .whereEqualTo(field, userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("ChatRepository", "getThreadsForUser failed (userId=$userId role=$role): $error")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val threads = snapshot?.documents
+                    ?.mapNotNull { doc -> doc.toObject(ChatThread::class.java) }
+                    ?.sortedByDescending { it.lastMessageAt }
+                    ?: emptyList()
+                trySend(threads)
             }
-            val threads = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject(ChatThread::class.java)
-            } ?: emptyList()
-            trySend(threads)
-        }
         awaitClose { listener.remove() }
     }
 

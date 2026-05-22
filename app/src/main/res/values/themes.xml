@@ -2,4 +2,15 @@
 <resources>
 
     <style name="Theme.KwaGae" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- System-level splash screen (shown before Activity is ready) -->
+    <style name="Theme.KwaGae.Splash" parent="Theme.SplashScreen">
+        <!-- Cream background matching the Compose splash -->
+        <item name="windowSplashScreenBackground">@color/kwagae_cream</item>
+        <!-- House + pin icon in brand colours -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_kwagae_splash</item>
+        <!-- Transition into the normal app theme -->
+        <item name="postSplashScreenTheme">@style/Theme.KwaGae</item>
+    </style>
+
 </resources>

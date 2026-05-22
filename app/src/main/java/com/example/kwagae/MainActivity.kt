@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     ) { /* granted or denied — worker will still run; notify only if granted */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()   // must be called before super.onCreate
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -87,9 +89,10 @@ fun KwaGaeApp() {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         NavHost(
             navController    = navController,
-            startDestination = "login",
+            startDestination = "splash",
             modifier         = Modifier.padding(innerPadding)
         ) {
+            composable("splash")   { SplashScreen(navController) }
             composable("login")    { LoginScreen(navController) }
             composable("register") { RegisterScreen(navController) }
             composable("main")     { MainScreen(navController) }

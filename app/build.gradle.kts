@@ -97,6 +97,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
 
+    // Splash Screen API (backward-compatible system splash)
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // WorkManager (background processing for listing alerts)
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 

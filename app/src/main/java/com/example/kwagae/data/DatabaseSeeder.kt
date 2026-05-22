@@ -67,16 +67,9 @@ object DatabaseSeeder {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    // ── Students ──────────────────────────────────────────────────────────────
-    //
+
     // 50 students distributed across 6 Gaborone universities:
-    //   1-10  → University of Botswana        (UB20210001–UB20210010)
-    //  11-20  → Botho University              (BOTHO210001–BOTHO210010)
-    //  21-28  → Limkokwing University         (LU2021001–LU2021008)
-    //  29-36  → Botswana Open University      (BOU210001–BOU210008)
-    //  37-43  → ABM University College        (ABM210001–ABM210007)
-    //  44-50  → BAISAGO University            (BAI210001–BAI210007)
-    //
+
     // Test login:  email = firstname{n}@student.ac.bw   password = Student@{n}
 
     private fun buildStudents(): List<User> {

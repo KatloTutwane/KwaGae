@@ -42,6 +42,10 @@ import com.example.kwagae.ui.theme.GroundedColors
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 data class Category(val name: String, val icon: ImageVector)
 
@@ -186,8 +190,24 @@ fun GroundedListingsScreen(navController: NavController, viewModel: ListingsView
         }
     }
 
-    val recentListings      = allFilteredListings.takeLast(6).reversed()
-    val recommendedListings = remember(allFilteredListings) { allFilteredListings.shuffled().take(4) }
+    // Most recent 6 listings (list is already newest-first from Room query)
+    val recentListings = allFilteredListings.take(6)
+
+    // Most affordable available listings as "recommended" — meaningful for students
+    val recommendedListings = remember(allFilteredListings) {
+        allFilteredListings.filter { !it.isReserved }.sortedBy { it.price }.take(4)
+    }
+
+    // Real stats derived from live data
+    val availableCount  = allFilteredListings.count { it.isAvailable && !it.isReserved }
+    val areasCount      = allFilteredListings
+        .map { it.location.substringBefore(",").trim() }
+        .filter { it.isNotEmpty() }
+        .toSet().size
+    val providersCount  = allFilteredListings
+        .map { it.ownerUid.ifEmpty { it.providerName } }
+        .filter { it.isNotEmpty() }
+        .toSet().size
 
     val displayedRecent = if (selectedCategory == "All") recentListings else {
         recentListings.filter {
@@ -232,10 +252,10 @@ fun GroundedListingsScreen(navController: NavController, viewModel: ListingsView
             // ── Stats panel ───────────────────────────────────────────────────
             item {
                 GroundedStatsPanel(
-                    listingsCount  = recentListings.size,
-                    favoritesCount = 12,
-                    visitsCount    = 8,
-                    modifier       = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    availableCount  = availableCount,
+                    areasCount      = areasCount,
+                    providersCount  = providersCount,
+                    modifier        = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                 )
             }
 
@@ -769,9 +789,9 @@ fun GroundedHeader(
 
 @Composable
 fun GroundedStatsPanel(
-    listingsCount: Int,
-    favoritesCount: Int,
-    visitsCount: Int,
+    availableCount: Int,
+    areasCount: Int,
+    providersCount: Int,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -781,23 +801,78 @@ fun GroundedStatsPanel(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
-            modifier              = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier              = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp, horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment     = Alignment.CenterVertically
         ) {
-            GroundedStatItem(Icons.Default.Home,       count = listingsCount.toString(),  label = "Listings")
-            GroundedStatItem(Icons.Default.Favorite,   count = favoritesCount.toString(), label = "Favorites")
-            GroundedStatItem(Icons.Default.Visibility, count = visitsCount.toString(),    label = "Visits")
+            GroundedStatItem(
+                icon  = Icons.Default.Home,
+                count = availableCount.toString(),
+                label = "Available",
+                tint  = GroundedColors.AccentMoss
+            )
+            // Divider
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(44.dp)
+                    .background(GroundedColors.BorderDefault)
+            )
+            GroundedStatItem(
+                icon  = Icons.Default.LocationOn,
+                count = areasCount.toString(),
+                label = "Areas",
+                tint  = GroundedColors.BarkMid
+            )
+            // Divider
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(44.dp)
+                    .background(GroundedColors.BorderDefault)
+            )
+            GroundedStatItem(
+                icon  = Icons.Default.Business,
+                count = providersCount.toString(),
+                label = "Landlords",
+                tint  = GroundedColors.ClayWarm
+            )
         }
     }
 }
 
 @Composable
-fun GroundedStatItem(icon: ImageVector, count: String, label: String) {
+fun GroundedStatItem(
+    icon: ImageVector,
+    count: String,
+    label: String,
+    tint: Color = GroundedColors.BarkMid
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = GroundedColors.BarkMid)
-        Spacer(Modifier.height(4.dp))
-        Text(count, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = GroundedColors.ClayWarm)
-        Text(label, fontSize = 11.sp, color = GroundedColors.TextMuted, letterSpacing = 0.5.sp)
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier         = Modifier
+                .size(40.dp)
+                .background(tint.copy(alpha = 0.10f), RoundedCornerShape(10.dp))
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text       = count,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize   = 22.sp,
+            color      = tint
+        )
+        Text(
+            text          = label,
+            fontSize      = 10.sp,
+            color         = GroundedColors.TextMuted,
+            letterSpacing = 0.5.sp,
+            fontWeight    = FontWeight.Medium
+        )
     }
 }
 
@@ -840,30 +915,179 @@ fun GroundedCategoryChip(
 
 @Composable
 fun GroundedListingCardHorizontal(listing: Listing, onClick: () -> Unit) {
+    val context     = LocalContext.current
+    var isFavourite by remember { mutableStateOf(false) }
+    val imageSource = remember(listing.listingId) {
+        listing.imageUrls.split(",").firstOrNull { it.isNotBlank() }
+            ?: listing.imageUrl.takeIf { it.isNotBlank() }
+    }
+
     Card(
         modifier = Modifier
             .width(260.dp)
             .clickable(onClick = onClick)
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(12.dp),
+            .shadow(elevation = 8.dp, shape = RoundedCornerShape(14.dp),
                 ambientColor = Color(0xFF1E1208).copy(alpha = 0.15f),
                 spotColor    = Color(0xFF1E1208).copy(alpha = 0.1f)),
-        shape  = RoundedCornerShape(12.dp),
+        shape  = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = GroundedColors.CreamCard)
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(GroundedColors.topStripeGradient))
 
+            // ── Image area ────────────────────────────────────────────────────
             Box(
-                modifier         = Modifier.fillMaxWidth().height(140.dp).background(GroundedColors.CreamField),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp))
             ) {
-                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(56.dp), tint = GroundedColors.TextMuted)
+                // Gradient fallback always rendered beneath the real image
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(GroundedColors.BarkMid, GroundedColors.ClayWarm.copy(alpha = 0.55f))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Home, null, modifier = Modifier.size(48.dp),
+                        tint = Color.White.copy(alpha = 0.18f))
+                }
+
+                // Real property image
+                if (imageSource != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(imageSource)
+                            .crossfade(400)
+                            .build(),
+                        contentDescription = listing.title,
+                        contentScale       = ContentScale.Crop,
+                        modifier           = Modifier.fillMaxSize()
+                    )
+                }
+
+                // Bottom scrim for readability
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(65.dp)
+                        .align(Alignment.BottomStart)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.52f))
+                            )
+                        )
+                )
+
+                // Property type badge — top-left
+                if (listing.type.isNotEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(topStart = 0.dp, bottomEnd = 10.dp),
+                        color = GroundedColors.ClayWarm.copy(alpha = 0.93f),
+                        modifier = Modifier.align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text          = listing.type.uppercase(),
+                            fontSize      = 8.sp,
+                            letterSpacing = 0.8.sp,
+                            color         = Color(0xFFF5E8CC),
+                            fontWeight    = FontWeight.Bold,
+                            modifier      = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                // Favourite button — top-right
+                IconButton(
+                    onClick  = { isFavourite = !isFavourite },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(28.dp)
+                        .background(Color.Black.copy(alpha = 0.30f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector        = if (isFavourite) Icons.Default.Favorite
+                                             else Icons.Default.FavoriteBorder,
+                        contentDescription = "Save listing",
+                        modifier           = Modifier.size(14.dp),
+                        tint               = if (isFavourite) Color(0xFFFF6B6B) else Color.White
+                    )
+                }
+
+                // Price chip — bottom-left overlaid on image
+                Surface(
+                    shape    = RoundedCornerShape(topEnd = 10.dp),
+                    color    = GroundedColors.ClayWarm,
+                    modifier = Modifier.align(Alignment.BottomStart)
+                ) {
+                    Text(
+                        text       = "BWP ${"%.0f".format(listing.price)}/mo",
+                        fontSize   = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = Color(0xFFF5E8CC),
+                        modifier   = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                    )
+                }
             }
 
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(listing.title,                                        fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, color = GroundedColors.TextPrimary)
-                Text("BWP ${"%.0f".format(listing.price)}/mo",          color = GroundedColors.ClayWarm, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(listing.location,            fontSize = 11.sp, color = GroundedColors.TextMuted)
+            // ── Card content ──────────────────────────────────────────────────
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                Text(
+                    text       = listing.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize   = 14.sp,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
+                    color      = GroundedColors.TextPrimary
+                )
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, null,
+                        Modifier.size(11.dp), tint = GroundedColors.BarkMid)
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text     = listing.location,
+                        fontSize = 10.sp,
+                        color    = GroundedColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                // Availability badge
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (listing.isAvailable)
+                        GroundedColors.AccentMoss.copy(alpha = 0.14f)
+                    else Color(0xFFE65100).copy(alpha = 0.12f)
+                ) {
+                    Row(
+                        modifier          = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (listing.isAvailable) Icons.Default.CheckCircle
+                                          else Icons.Default.Cancel,
+                            contentDescription = null,
+                            modifier           = Modifier.size(9.dp),
+                            tint               = if (listing.isAvailable) GroundedColors.AccentMoss
+                                                 else Color(0xFFE65100)
+                        )
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text       = if (listing.isAvailable) "Available" else "Taken",
+                            fontSize   = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = if (listing.isAvailable) GroundedColors.AccentMoss
+                                         else Color(0xFFE65100)
+                        )
+                    }
+                }
             }
         }
     }
@@ -875,6 +1099,13 @@ fun GroundedListingCardVertical(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val context     = LocalContext.current
+    var isFavourite by remember { mutableStateOf(false) }
+    val imageSource = remember(listing.listingId) {
+        listing.imageUrls.split(",").firstOrNull { it.isNotBlank() }
+            ?: listing.imageUrl.takeIf { it.isNotBlank() }
+    }
+
     Card(
         modifier = modifier
             .clickable(onClick = onClick)
@@ -887,16 +1118,159 @@ fun GroundedListingCardVertical(
         Column {
             Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(GroundedColors.topStripeGradient))
 
+            // ── Image area ────────────────────────────────────────────────────
             Box(
-                modifier         = Modifier.fillMaxWidth().height(100.dp).background(GroundedColors.CreamField),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(115.dp)
             ) {
-                Icon(Icons.Default.Apartment, contentDescription = null, modifier = Modifier.size(40.dp), tint = GroundedColors.TextMuted)
+                // Gradient fallback
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(GroundedColors.BarkMid, GroundedColors.ClayWarm.copy(alpha = 0.55f))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Apartment, null,
+                        modifier = Modifier.size(36.dp),
+                        tint     = Color.White.copy(alpha = 0.18f))
+                }
+
+                // Real property image
+                if (imageSource != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(imageSource)
+                            .crossfade(400)
+                            .build(),
+                        contentDescription = listing.title,
+                        contentScale       = ContentScale.Crop,
+                        modifier           = Modifier.fillMaxSize()
+                    )
+                }
+
+                // Bottom scrim
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .align(Alignment.BottomStart)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.48f))
+                            )
+                        )
+                )
+
+                // Type badge — top-left
+                if (listing.type.isNotEmpty()) {
+                    Surface(
+                        shape    = RoundedCornerShape(topStart = 12.dp, bottomEnd = 8.dp),
+                        color    = GroundedColors.ClayWarm.copy(alpha = 0.93f),
+                        modifier = Modifier.align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text          = listing.type.uppercase(),
+                            fontSize      = 7.sp,
+                            letterSpacing = 0.5.sp,
+                            color         = Color(0xFFF5E8CC),
+                            fontWeight    = FontWeight.Bold,
+                            modifier      = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                // Favourite button — top-right
+                IconButton(
+                    onClick  = { isFavourite = !isFavourite },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(24.dp)
+                        .background(Color.Black.copy(alpha = 0.30f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector        = if (isFavourite) Icons.Default.Favorite
+                                             else Icons.Default.FavoriteBorder,
+                        contentDescription = "Save listing",
+                        modifier           = Modifier.size(12.dp),
+                        tint               = if (isFavourite) Color(0xFFFF6B6B) else Color.White
+                    )
+                }
+
+                // Price chip — bottom-left
+                Surface(
+                    shape    = RoundedCornerShape(topEnd = 8.dp),
+                    color    = GroundedColors.ClayWarm,
+                    modifier = Modifier.align(Alignment.BottomStart)
+                ) {
+                    Text(
+                        text       = "BWP ${"%.0f".format(listing.price)}",
+                        fontSize   = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = Color(0xFFF5E8CC),
+                        modifier   = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                    )
+                }
             }
 
-            Column(modifier = Modifier.padding(10.dp)) {
-                Text(listing.title,                                    fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 13.sp, color = GroundedColors.TextPrimary)
-                Text("BWP ${"%.0f".format(listing.price)}", color = GroundedColors.ClayWarm, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            // ── Card content ──────────────────────────────────────────────────
+            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp)) {
+                Text(
+                    text       = listing.title,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
+                    fontSize   = 12.sp,
+                    color      = GroundedColors.TextPrimary
+                )
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, null,
+                        Modifier.size(9.dp), tint = GroundedColors.BarkMid)
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text     = listing.location,
+                        fontSize = 9.sp,
+                        color    = GroundedColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(Modifier.height(5.dp))
+                // Availability badge
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (listing.isAvailable)
+                        GroundedColors.AccentMoss.copy(alpha = 0.14f)
+                    else Color(0xFFE65100).copy(alpha = 0.12f)
+                ) {
+                    Row(
+                        modifier          = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (listing.isAvailable) Icons.Default.CheckCircle
+                                          else Icons.Default.Cancel,
+                            contentDescription = null,
+                            modifier           = Modifier.size(8.dp),
+                            tint               = if (listing.isAvailable) GroundedColors.AccentMoss
+                                                 else Color(0xFFE65100)
+                        )
+                        Spacer(Modifier.width(2.dp))
+                        Text(
+                            text       = if (listing.isAvailable) "Available" else "Taken",
+                            fontSize   = 8.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = if (listing.isAvailable) GroundedColors.AccentMoss
+                                         else Color(0xFFE65100)
+                        )
+                    }
+                }
             }
         }
     }

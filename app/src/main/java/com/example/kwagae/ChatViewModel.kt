@@ -28,9 +28,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val listingId    = ChatNavArgs.listingId
     val listingTitle = ChatNavArgs.listingTitle
 
-    val currentUserId = prefs.getLong("user_id", -1L).toString()
-    val currentName   = prefs.getString("full_name", "Student") ?: "Student"
     val currentRole   = prefs.getString("role", "student") ?: "student"
+    val currentUserId = if (currentRole == "provider") {
+        val uid = prefs.getString("firebase_uid", "") ?: ""
+        if (uid.isNotEmpty()) uid
+        else prefs.getString("student_id", "") ?: ""
+    } else {
+        prefs.getLong("user_id", -1L).toString()
+    }
+    val currentName   = prefs.getString("full_name", "Student") ?: "Student"
 
     private val _uiState = MutableStateFlow(
         ChatUiState(otherName = providerName.ifEmpty { "Landlord" })
