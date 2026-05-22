@@ -1,9 +1,12 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+
 package com.example.kwagae
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,8 +35,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.kwagae.data.database.AppDatabase
 import com.example.kwagae.data.models.Listing
-import com.example.kwagae.ui.components.*   // ← all shared widgets live here
+import com.example.kwagae.notifications.AlertPreferences
+import com.example.kwagae.notifications.AlertPrefs
+import com.example.kwagae.ui.components.*
 import com.example.kwagae.ui.theme.GroundedColors
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -43,9 +50,31 @@ data class Category(val name: String, val icon: ImageVector)
 @Composable
 fun MainScreen(navController: NavController) {
     val bottomNavController = rememberNavController()
-    // Track current route for the bottom bar highlight
     val currentBackStack by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = currentBackStack?.destination?.route
+
+    // Determine role so providers get a tailored tab layout
+    val context = LocalContext.current
+    val currentRole = remember {
+        context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE)
+            .getString("role", "student") ?: "student"
+    }
+    val isProvider = currentRole == "provider"
+
+    // Shared ViewModel for both student browse tabs
+    val listingsViewModel: ListingsViewModel = viewModel()
+
+    val items  = listOf("listings", "filters", "messages", "profile")
+    val icons  = if (isProvider) {
+        listOf(Icons.Default.Business, Icons.Default.Search, Icons.Default.Chat, Icons.Default.Person)
+    } else {
+        listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.Chat, Icons.Default.Person)
+    }
+    val labels = if (isProvider) {
+        listOf("MY LISTINGS", "SEARCH", "CHATS", "PROFILE")
+    } else {
+        listOf("HOMES", "SEARCH", "CHATS", "PROFILE")
+    }
 
     Scaffold(
         bottomBar = {
@@ -59,10 +88,6 @@ fun MainScreen(navController: NavController) {
                     spotColor = Color(0xFF1E1208).copy(alpha = 0.1f)
                 )
             ) {
-                val items  = listOf("listings", "filters", "messages", "profile")
-                val icons  = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.Chat, Icons.Default.Person)
-                val labels = listOf("HOMES", "FILTERS", "CHATS", "PROFILE")
-
                 items.forEachIndexed { index, screen ->
                     val isSelected = currentRoute == screen
                     NavigationBarItem(
@@ -84,9 +109,9 @@ fun MainScreen(navController: NavController) {
                         label = {
                             Text(
                                 labels[index],
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                letterSpacing = 1.sp,
+                                letterSpacing = 0.8.sp,
                                 color = if (isSelected) GroundedColors.ClayWarm else GroundedColors.TextMuted
                             )
                         },
@@ -107,10 +132,14 @@ fun MainScreen(navController: NavController) {
             startDestination = "listings",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("listings")  { GroundedListingsScreen(navController) }
-            composable("filters")   { GroundedFiltersScreen(bottomNavController) }
-            composable("messages")  { ConversationsScreen(navController) }
-            composable("profile")   { GroundedProfileScreen(navController) }
+            // HOMES tab: provider dashboard for providers, listings browse for students
+            composable("listings") {
+                if (isProvider) ProviderDashboardScreen(navController)
+                else            GroundedListingsScreen(navController, listingsViewModel)
+            }
+            composable("filters")  { ListingsScreen(navController, listingsViewModel) }
+            composable("messages") { ConversationsScreen(navController) }
+            composable("profile")  { GroundedProfileScreen(navController) }
         }
     }
 }
@@ -118,16 +147,16 @@ fun MainScreen(navController: NavController) {
 // ── GroundedListingsScreen (Home tab) ─────────────────────────────────────────
 
 @Composable
-fun GroundedListingsScreen(navController: NavController) {
+fun GroundedListingsScreen(navController: NavController, viewModel: ListingsViewModel) {
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
 
-    var userFullName         by remember { mutableStateOf("") }
-    var userRole             by remember { mutableStateOf("student") }
-    var recentListings       by remember { mutableStateOf<List<Listing>>(emptyList()) }
-    var recommendedListings  by remember { mutableStateOf<List<Listing>>(emptyList()) }
-    var isLoading            by remember { mutableStateOf(true) }
-    var selectedCategory     by remember { mutableStateOf("All") }
+    var userFullName by remember { mutableStateOf("") }
+    var userRole     by remember { mutableStateOf("student") }
+    var isLoading    by remember { mutableStateOf(true) }
+    var selectedCategory by remember { mutableStateOf("All") }
+
+    val allFilteredListings by viewModel.filteredListings.collectAsState()
 
     val categories = listOf(
         Category("All",        Icons.Default.Home),
@@ -140,10 +169,9 @@ fun GroundedListingsScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                val db    = AppDatabase.getDatabase(context)
-                val prefs = context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE)
+                val db     = AppDatabase.getDatabase(context)
+                val prefs  = context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE)
                 val userId = prefs.getLong("user_id", -1L)
-
                 if (userId != -1L) {
                     val currentUser = db.userDao().getById(userId)
                     if (currentUser != null) {
@@ -151,21 +179,20 @@ fun GroundedListingsScreen(navController: NavController) {
                         userRole     = currentUser.role
                     }
                 }
-
-                val allListings     = db.listingDao().getAllListings()
-                recentListings      = allListings.takeLast(6).reversed()
-                recommendedListings = allListings.shuffled().take(4)
-                isLoading           = false
+                isLoading = false
             } catch (e: Exception) {
                 isLoading = false
             }
         }
     }
 
-    // Filter recent listings by selected category
+    val recentListings      = allFilteredListings.takeLast(6).reversed()
+    val recommendedListings = remember(allFilteredListings) { allFilteredListings.shuffled().take(4) }
+
     val displayedRecent = if (selectedCategory == "All") recentListings else {
         recentListings.filter {
-            it.title.contains(selectedCategory.dropLast(1), ignoreCase = true) // "Apartments" -> "Apartment"
+            it.type.equals(selectedCategory.trimEnd('s'), ignoreCase = true) ||
+            it.title.contains(selectedCategory.trimEnd('s'), ignoreCase = true)
         }
     }
 
@@ -348,15 +375,15 @@ fun GroundedListingsScreen(navController: NavController) {
     }
 }
 
-// ── GroundedFiltersScreen ─────────────────────────────────────────────────────
+// ── Alert Preferences Screen (FILTERS tab) ────────────────────────────────────
+// Users configure notification preferences here; active filters are in ListingsScreen
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GroundedFiltersScreen(bottomNavController: NavController) {
-    var selectedBedrooms     by remember { mutableStateOf(1) }
-    var selectedPropertyType by remember { mutableStateOf("All") }
-    var priceRange           by remember { mutableStateOf(5000f) }
-
-    val propertyTypes = listOf("All", "Apartment", "House", "Room", "Studio")
+    val context = LocalContext.current
+    var prefs   by remember { mutableStateOf(AlertPreferences.load(context)) }
+    var saved   by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -371,106 +398,159 @@ fun GroundedFiltersScreen(bottomNavController: NavController) {
         ) {
             item {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
+                    Modifier.fillMaxWidth().height(3.dp)
                         .background(GroundedColors.topStripeGradient)
                 )
                 Spacer(Modifier.height(16.dp))
+                Text("SMART ALERTS", fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    color = GroundedColors.ClayWarm, letterSpacing = 3.sp)
+                Text("Notification Preferences", fontSize = 24.sp, fontWeight = FontWeight.SemiBold,
+                    color = GroundedColors.TextPrimary, modifier = Modifier.padding(bottom = 4.dp))
+                Text("Get notified when a new listing matches your criteria.",
+                    fontSize = 13.sp, color = GroundedColors.TextMuted,
+                    modifier = Modifier.padding(bottom = 16.dp))
             }
 
+            // Enable toggle
             item {
-                Text(
-                    text          = "FILTER YOUR SEARCH",
-                    fontSize      = 12.sp,
-                    fontWeight    = FontWeight.Medium,
-                    color         = GroundedColors.ClayWarm,
-                    letterSpacing = 3.sp,
-                    modifier      = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text       = "Find Your Grounded Home",
-                    fontSize   = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = GroundedColors.TextPrimary,
-                    modifier   = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            // ── Budget range ──────────────────────────────────────────────────
-            item {
-                GroundedFilterCard(title = "BUDGET RANGE", icon = Icons.Default.AttachMoney) {
-                    Column {
-                        Text(
-                            text       = "BWP 0 – BWP ${priceRange.toInt()}",
-                            fontSize   = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color      = GroundedColors.ClayWarm
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Slider(
-                            value         = priceRange,
-                            onValueChange = { priceRange = it },
-                            valueRange    = 0f..50000f,
-                            steps         = 49,
-                            colors        = SliderDefaults.colors(
-                                thumbColor       = GroundedColors.ClayWarm,
-                                activeTrackColor = GroundedColors.ClayWarm
-                            )
-                        )
-                    }
-                }
-            }
-
-            // ── Bedrooms ──────────────────────────────────────────────────────
-            item {
-                GroundedFilterCard(title = "BEDROOMS", icon = Icons.Default.Bed) {
+                GroundedFilterCard(title = "ALERTS", icon = Icons.Default.Notifications) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier              = Modifier.fillMaxWidth()
+                        Modifier.fillMaxWidth(),
+                        Arrangement.SpaceBetween, Alignment.CenterVertically
                     ) {
-                        listOf(1, 2, 3, 4).forEach { bedrooms ->
-                            GroundedFilterChip(
-                                label      = "$bedrooms",
-                                isSelected = selectedBedrooms == bedrooms,
-                                onClick    = { selectedBedrooms = bedrooms }
-                            )
+                        Column {
+                            Text("Enable listing alerts", fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium, color = GroundedColors.TextPrimary)
+                            Text("Receive push notifications for matching homes",
+                                fontSize = 11.sp, color = GroundedColors.TextMuted)
                         }
+                        Switch(
+                            checked  = prefs.enabled,
+                            onCheckedChange = { prefs = prefs.copy(enabled = it); saved = false },
+                            colors   = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = GroundedColors.ClayWarm
+                            )
+                        )
                     }
                 }
             }
 
-            // ── Property type ─────────────────────────────────────────────────
+            // Max budget
+            item {
+                GroundedFilterCard(title = "MAX BUDGET", icon = Icons.Default.AttachMoney) {
+                    Text("Up to BWP ${prefs.maxPrice.toInt()}/mo", fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold, color = GroundedColors.ClayWarm)
+                    Spacer(Modifier.height(8.dp))
+                    Slider(
+                        value         = prefs.maxPrice,
+                        onValueChange = { prefs = prefs.copy(maxPrice = it); saved = false },
+                        valueRange    = 500f..15000f,
+                        enabled       = prefs.enabled,
+                        colors        = SliderDefaults.colors(
+                            thumbColor       = GroundedColors.ClayWarm,
+                            activeTrackColor = GroundedColors.ClayWarm
+                        )
+                    )
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                        Text("BWP 500",    fontSize = 10.sp, color = GroundedColors.TextMuted)
+                        Text("BWP 15,000", fontSize = 10.sp, color = GroundedColors.TextMuted)
+                    }
+                }
+            }
+
+            // Property type
             item {
                 GroundedFilterCard(title = "PROPERTY TYPE", icon = Icons.Default.House) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(propertyTypes) { type ->
-                            GroundedFilterChip(
-                                label      = type,
-                                isSelected = selectedPropertyType == type,
-                                onClick    = { selectedPropertyType = type }
+                    Text("Leave empty to alert on any type", fontSize = 11.sp,
+                        color = GroundedColors.TextMuted, modifier = Modifier.padding(bottom = 8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement   = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ALL_PROPERTY_TYPES.forEach { type ->
+                            val isSelected = type in prefs.types
+                            FilterChip(
+                                selected = isSelected,
+                                onClick  = {
+                                    val updated = if (isSelected) prefs.types - type else prefs.types + type
+                                    prefs = prefs.copy(types = updated)
+                                    saved = false
+                                },
+                                label    = { Text(type, fontSize = 12.sp) },
+                                enabled  = prefs.enabled,
+                                colors   = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = GroundedColors.ClayWarm,
+                                    selectedLabelColor     = Color(0xFFF5E8CC),
+                                    containerColor         = GroundedColors.CreamField,
+                                    labelColor             = GroundedColors.TextSecondary
+                                )
                             )
                         }
                     }
                 }
             }
 
+            // Amenities
             item {
-                Spacer(Modifier.height(16.dp))
+                GroundedFilterCard(title = "REQUIRED AMENITIES", icon = Icons.Default.Star) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        Arrangement.SpaceBetween, Alignment.CenterVertically
+                    ) {
+                        Text("Must have Wi-Fi / Fibre", fontSize = 13.sp,
+                            color = GroundedColors.TextPrimary)
+                        Switch(
+                            checked  = prefs.wifiRequired,
+                            onCheckedChange = { prefs = prefs.copy(wifiRequired = it); saved = false },
+                            enabled  = prefs.enabled,
+                            colors   = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = GroundedColors.ClayWarm
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        Arrangement.SpaceBetween, Alignment.CenterVertically
+                    ) {
+                        Text("Must be furnished", fontSize = 13.sp,
+                            color = GroundedColors.TextPrimary)
+                        Switch(
+                            checked  = prefs.furnishedRequired,
+                            onCheckedChange = { prefs = prefs.copy(furnishedRequired = it); saved = false },
+                            enabled  = prefs.enabled,
+                            colors   = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = GroundedColors.ClayWarm
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Save button
+            item {
+                Spacer(Modifier.height(8.dp))
                 Button(
-                    onClick  = { bottomNavController.popBackStack() },
+                    onClick = {
+                        AlertPreferences.save(context, prefs)
+                        saved = true
+                    },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape    = RoundedCornerShape(10.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = GroundedColors.ClayWarm)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFFF5E8CC))
+                    Icon(
+                        if (saved) Icons.Default.Check else Icons.Default.NotificationsActive,
+                        null, Modifier.size(18.dp), tint = Color(0xFFF5E8CC)
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text          = "APPLY FILTERS",
-                        fontSize      = 13.sp,
-                        fontWeight    = FontWeight.Medium,
-                        letterSpacing = 2.sp,
-                        color         = Color(0xFFF5E8CC)
+                        if (saved) "PREFERENCES SAVED" else "SAVE PREFERENCES",
+                        fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.5.sp, color = Color(0xFFF5E8CC)
                     )
                 }
                 Spacer(Modifier.height(32.dp))
@@ -619,6 +699,9 @@ fun GroundedProfileScreen(navController: NavController) {
             item {
                 Button(
                     onClick  = {
+                        FirebaseAuth.getInstance().signOut()
+                        context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE)
+                            .edit().clear().apply()
                         navController.navigate("login") {
                             popUpTo("main") { inclusive = true }
                         }

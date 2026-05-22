@@ -57,4 +57,22 @@ interface ListingDao {
 
     @Query("DELETE FROM listings")
     suspend fun clearAll()
+
+    // ── Provider-specific queries ──────────────────────────────────────────────
+
+    /** All listings owned by a specific provider, newest first */
+    @Query("SELECT * FROM listings WHERE ownerUid = :ownerUid ORDER BY syncedAt DESC, listingId DESC")
+    fun getByOwnerUid(ownerUid: String): Flow<List<Listing>>
+
+    /** Hard-delete a listing by its local Room ID */
+    @Query("DELETE FROM listings WHERE listingId = :listingId")
+    suspend fun deleteById(listingId: Long)
+
+    /** Flip the availability flag without touching other fields */
+    @Query("UPDATE listings SET isAvailable = :isAvailable WHERE listingId = :listingId")
+    suspend fun updateAvailability(listingId: Long, isAvailable: Boolean)
+
+    /** Mark a listing as reserved after deposit payment */
+    @Query("UPDATE listings SET isReserved = 1, reservedByUid = :uid, reservationRef = :ref WHERE listingId = :listingId")
+    suspend fun reserveListing(listingId: Long, uid: String, ref: String)
 }

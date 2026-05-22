@@ -1,7 +1,9 @@
 package com.example.kwagae
 
-import android.content.Context
+import android.app.Activity
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,30 +23,43 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.kwagae.data.database.AppDatabase
-import com.example.kwagae.ui.components.*   // ← all shared widgets live here
+import com.example.kwagae.ui.components.*
 import com.example.kwagae.ui.theme.GroundedColors
-import kotlinx.coroutines.launch
-import java.security.MessageDigest
-
-private fun hashPassword(password: String): String {
-    val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
-    return bytes.joinToString("") { "%02x".format(it) }
-}
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 @Composable
 fun LoginScreen(navController: NavController) {
-    var email           by remember { mutableStateOf("") }
-    var password        by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var isLoading       by remember { mutableStateOf(false) }
-
+    val viewModel: LoginViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val scope   = rememberCoroutineScope()
 
-    // AppBackground = gradient + leaf shapes. No hardcoding needed.
+    // Google Sign-In launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    .getResult(ApiException::class.java)
+                account.idToken?.let { viewModel.signInWithGoogle(it) }
+                    ?: Toast.makeText(context, "Google Sign-In failed: no token", Toast.LENGTH_SHORT).show()
+            } catch (e: ApiException) {
+                Toast.makeText(context, "Google Sign-In failed: ${e.statusCode}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.navigateTo.collect { route ->
+            navController.navigate(route) { popUpTo("login") { inclusive = true } }
+        }
+    }
+
     AppBackground {
         Column(
             modifier = Modifier
@@ -94,27 +109,32 @@ fun LoginScreen(navController: NavController) {
                 Spacer(Modifier.height(16.dp))
 
                 GroundedTextField(
-                    value         = email,
-                    onValueChange = { email = it },
+                    value         = state.email,
+                    onValueChange = viewModel::onEmailChange,
                     label         = "EMAIL ADDRESS",
                     placeholder   = "student@example.com",
                     leadingIcon   = Icons.Default.Email,
-                    enabled       = !isLoading
+                    enabled       = !state.isLoading
                 )
 
                 Spacer(Modifier.height(12.dp))
 
                 GroundedTextField(
-                    value            = password,
-                    onValueChange    = { password = it },
+                    value            = state.password,
+                    onValueChange    = viewModel::onPasswordChange,
                     label            = "PASSWORD",
                     placeholder      = "••••••••",
                     leadingIcon      = Icons.Default.Lock,
-                    enabled          = !isLoading,
+                    enabled          = !state.isLoading,
                     isPassword       = true,
-                    passwordVisible  = passwordVisible,
-                    onTogglePassword = { passwordVisible = !passwordVisible }
+                    passwordVisible  = state.passwordVisible,
+                    onTogglePassword = viewModel::togglePasswordVisible
                 )
+
+                if (state.errorMessage.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    FieldErrorText(state.errorMessage)
+                }
 
                 TextButton(
                     onClick        = { /* TODO: forgot password */ },
@@ -134,33 +154,8 @@ fun LoginScreen(navController: NavController) {
                 GroundedPrimaryButton(
                     text        = "LOGIN",
                     loadingText = "LOGGING IN...",
-                    isLoading   = isLoading,
-                    onClick     = {
-                        if (email.isNotEmpty() && password.isNotEmpty()) {
-                            isLoading = true
-                            scope.launch {
-                                val db   = AppDatabase.getDatabase(context)
-                                val user = db.userDao().login(email, hashPassword(password))
-                                if (user != null) {
-                                    context.getSharedPreferences("kwagae_prefs", Context.MODE_PRIVATE)
-                                        .edit()
-                                        .putLong("user_id", user.userId)
-                                        .putString("student_id", user.studentId)
-                                        .putString("full_name", user.fullName)
-                                        .putString("role", user.role)
-                                        .apply()
-                                    Toast.makeText(context, "Welcome ${user.fullName}", Toast.LENGTH_SHORT).show()
-                                    isLoading = false
-                                    navController.navigate("main") { popUpTo("login") { inclusive = true } }
-                                } else {
-                                    isLoading = false
-                                    Toast.makeText(context, "Invalid credentials", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        } else {
-                            Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    isLoading   = state.isLoading,
+                    onClick     = viewModel::login
                 )
 
                 Spacer(Modifier.height(14.dp))
@@ -183,13 +178,24 @@ fun LoginScreen(navController: NavController) {
                     GroundedSocialButton(
                         text     = "Google",
                         icon     = Icons.Default.Email,
-                        onClick  = { Toast.makeText(context, "Google Login", Toast.LENGTH_SHORT).show() },
+                        onClick  = {
+                            try {
+                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                    .requestIdToken(context.getString(R.string.default_web_client_id))
+                                    .requestEmail()
+                                    .build()
+                                val client = GoogleSignIn.getClient(context, gso)
+                                googleSignInLauncher.launch(client.signInIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Google Sign-In not configured", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         modifier = Modifier.weight(1f)
                     )
                     GroundedSocialButton(
                         text     = "Apple",
                         icon     = Icons.Default.Lock,
-                        onClick  = { Toast.makeText(context, "Apple Login", Toast.LENGTH_SHORT).show() },
+                        onClick  = { Toast.makeText(context, "Apple Login coming soon", Toast.LENGTH_SHORT).show() },
                         modifier = Modifier.weight(1f)
                     )
                 }

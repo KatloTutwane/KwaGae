@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">KwaGae</string>
+    <!-- Overridden at build time by google-services plugin if Google Sign-In is enabled in Firebase Console -->
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID</string>
 </resources>

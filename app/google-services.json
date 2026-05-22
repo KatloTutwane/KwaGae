@@ -12,7 +12,12 @@
           "package_name": "com.example.kwagae"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "34293018555-paoqcnb5dcuqr18f278deah4c8s63rsj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAJraPzUt-dZWDw3NLahCd17qj_gzgQ8PU"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "34293018555-paoqcnb5dcuqr18f278deah4c8s63rsj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

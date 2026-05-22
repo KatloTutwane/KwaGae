@@ -63,7 +63,6 @@ class ListingRepository @Inject constructor(
 
         listenerRegistration = firestore
             .collection(LISTINGS_COLLECTION)
-            .whereEqualTo("available", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
 
@@ -74,13 +73,13 @@ class ListingRepository @Inject constructor(
                             pendingSync = false
                         )
                     }
-                    // Merge: preserve local Room IDs for docs we already have
+                    // Upsert each remote listing into Room (preserve local ID)
                     listings.forEach { remote ->
                         val existing = listingDao.getByFirestoreId(remote.firestoreId)
                         listingDao.insert(remote.copy(listingId = existing?.listingId ?: 0))
                     }
 
-                    // Remove local listings that were deleted remotely
+                    // Remove listings deleted remotely (only for Firestore-backed ones)
                     val remoteIds = listings.map { it.firestoreId }.toSet()
                     listingDao.getAllListings().forEach { local ->
                         if (local.firestoreId.isNotEmpty() && local.firestoreId !in remoteIds) {

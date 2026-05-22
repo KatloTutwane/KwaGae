@@ -1,6 +1,5 @@
 package com.example.kwagae
 
-import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -19,90 +18,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.kwagae.data.StudentVerifier
-import com.example.kwagae.data.VerificationResult
-import com.example.kwagae.data.database.AppDatabase
-import com.example.kwagae.data.models.User
 import com.example.kwagae.ui.components.*
 import com.example.kwagae.ui.theme.GroundedColors
-import kotlinx.coroutines.launch
-import java.security.MessageDigest
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-private fun hashPw(password: String): String {
-    val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
-    return bytes.joinToString("") { "%02x".format(it) }
-}
-
-/** The five possible states for the student-number verification widget */
-private enum class VerifyState {
-    IDLE,
-    CHECKING,
-    VERIFIED,
-    FAILED_NOT_FOUND,
-    FAILED_FORMAT,
-    FAILED_UNKNOWN_UNI   // prefix not recognised — not a Gaborone university
-}
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
 fun RegisterScreen(navController: NavController) {
-
-    var fullName        by remember { mutableStateOf("") }
-    var email           by remember { mutableStateOf("") }
-    var password        by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var selectedRole    by remember { mutableStateOf("student") }
-    var ubNumber        by remember { mutableStateOf("") }  // UB student number
-
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmVisible  by remember { mutableStateOf(false) }
-
-    // Validation error strings
-    var nameError    by remember { mutableStateOf("") }
-    var emailError   by remember { mutableStateOf("") }
-    var passwordError by remember { mutableStateOf("") }
-    var confirmError  by remember { mutableStateOf("") }
-    var ubNumberError by remember { mutableStateOf("") }
-
-    // Student verification state machine
-    var verifyState         by remember { mutableStateOf(VerifyState.IDLE) }
-    // University detected live from the prefix (no network call)
-    var detectedUniversity  by remember { mutableStateOf<StudentVerifier.University?>(null) }
-    // University confirmed after a successful registry check
-    var verifiedUniversity  by remember { mutableStateOf<StudentVerifier.University?>(null) }
-
-    var isRegistering by remember { mutableStateOf(false) }
-
+    val viewModel: RegisterViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val scope   = rememberCoroutineScope()
 
-    // Reset verification and update live university detection on every keystroke
-    LaunchedEffect(ubNumber) {
-        if (verifyState != VerifyState.IDLE) {
-            verifyState        = VerifyState.IDLE
-            verifiedUniversity = null
+    LaunchedEffect(Unit) {
+        viewModel.navigateTo.collect { route ->
+            Toast.makeText(context, "Account created!", Toast.LENGTH_SHORT).show()
+            navController.navigate(route) { popUpTo("register") { inclusive = true } }
         }
-        ubNumberError      = ""
-        detectedUniversity = StudentVerifier.detectUniversity(ubNumber)
     }
-
-    // Reset everything if user switches role
-    LaunchedEffect(selectedRole) {
-        verifyState        = VerifyState.IDLE
-        ubNumberError      = ""
-        ubNumber           = ""
-        detectedUniversity = null
-        verifiedUniversity = null
-    }
-
-    // Registration may only proceed when:
-    //  • role = provider  (no verification needed), OR
-    //  • role = student AND verifyState = VERIFIED
-    val canRegister = selectedRole == "provider" || verifyState == VerifyState.VERIFIED
 
     AppBackground {
         Column(
@@ -130,29 +65,29 @@ fun RegisterScreen(navController: NavController) {
                 )
 
                 // ── Basic fields ───────────────────────────────────────────────
-                GroundedField("FULL NAME", fullName, { fullName = it; nameError = "" }, Icons.Default.Person)
-                FieldErrorText(nameError)
+                GroundedField("FULL NAME", state.fullName, viewModel::onFullNameChange, Icons.Default.Person)
+                FieldErrorText(state.nameError)
 
-                GroundedField("EMAIL ADDRESS", email, { email = it; emailError = "" }, Icons.Default.Email)
-                FieldErrorText(emailError)
+                GroundedField("EMAIL ADDRESS", state.email, viewModel::onEmailChange, Icons.Default.Email)
+                FieldErrorText(state.emailError)
 
                 GroundedPasswordField(
                     label    = "PASSWORD",
-                    value    = password,
-                    onChange = { password = it; passwordError = "" },
-                    visible  = passwordVisible,
-                    toggle   = { passwordVisible = !passwordVisible }
+                    value    = state.password,
+                    onChange = viewModel::onPasswordChange,
+                    visible  = state.passwordVisible,
+                    toggle   = viewModel::togglePasswordVisible
                 )
-                FieldErrorText(passwordError)
+                FieldErrorText(state.passwordError)
 
                 GroundedPasswordField(
                     label    = "CONFIRM PASSWORD",
-                    value    = confirmPassword,
-                    onChange = { confirmPassword = it; confirmError = "" },
-                    visible  = confirmVisible,
-                    toggle   = { confirmVisible = !confirmVisible }
+                    value    = state.confirmPassword,
+                    onChange = viewModel::onConfirmPasswordChange,
+                    visible  = state.confirmVisible,
+                    toggle   = viewModel::toggleConfirmVisible
                 )
-                FieldErrorText(confirmError)
+                FieldErrorText(state.confirmError)
 
                 Spacer(Modifier.height(12.dp))
 
@@ -172,9 +107,9 @@ fun RegisterScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf("student", "provider").forEach { role ->
-                        val isSelected = selectedRole == role
+                        val isSelected = state.selectedRole == role
                         Button(
-                            onClick  = { selectedRole = role },
+                            onClick  = { viewModel.onRoleChange(role) },
                             modifier = Modifier.weight(1f),
                             shape    = RoundedCornerShape(10.dp),
                             colors   = ButtonDefaults.buttonColors(
@@ -206,40 +141,20 @@ fun RegisterScreen(navController: NavController) {
 
                 // ── Student verification panel (animated, students only) ────────
                 AnimatedVisibility(
-                    visible = selectedRole == "student",
+                    visible = state.selectedRole == "student",
                     enter   = expandVertically() + fadeIn(),
                     exit    = shrinkVertically() + fadeOut()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Spacer(Modifier.height(16.dp))
                         StudentVerificationPanel(
-                            ubNumber           = ubNumber,
-                            onUbChange         = { ubNumber = it },
-                            verifyState        = verifyState,
-                            ubNumberError      = ubNumberError,
-                            detectedUniversity = detectedUniversity,
-                            verifiedUniversity = verifiedUniversity,
-                            onVerifyClick      = {
-                                ubNumberError = ""
-                                verifyState   = VerifyState.CHECKING
-                                scope.launch {
-                                    when (val result = StudentVerifier.verify(ubNumber)) {
-                                        is VerificationResult.Verified -> {
-                                            verifiedUniversity = result.university
-                                            verifyState        = VerifyState.VERIFIED
-                                        }
-                                        VerificationResult.NotFound -> {
-                                            verifyState = VerifyState.FAILED_NOT_FOUND
-                                        }
-                                        is VerificationResult.InvalidFormat -> {
-                                            verifyState = VerifyState.FAILED_FORMAT
-                                        }
-                                        VerificationResult.UnknownUniversity -> {
-                                            verifyState = VerifyState.FAILED_UNKNOWN_UNI
-                                        }
-                                    }
-                                }
-                            }
+                            ubNumber           = state.ubNumber,
+                            onUbChange         = viewModel::onUbNumberChange,
+                            verifyState        = state.verifyState,
+                            ubNumberError      = state.ubNumberError,
+                            detectedUniversity = state.detectedUniversity,
+                            verifiedUniversity = state.verifiedUniversity,
+                            onVerifyClick      = viewModel::verify
                         )
                     }
                 }
@@ -248,55 +163,9 @@ fun RegisterScreen(navController: NavController) {
 
                 // ── Register button ────────────────────────────────────────────
                 GroundedPrimaryButton(
-                    text        = if (canRegister) "REGISTER" else "VERIFY STUDENT FIRST",
-                    isLoading   = isRegistering,
-                    onClick     = {
-                        // Validate common fields
-                        var valid = true
-                        if (fullName.isBlank())  { nameError = "Enter your full name";           valid = false }
-                        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                            emailError = "Invalid email address"; valid = false
-                        }
-                        if (password.length < 6) { passwordError = "Minimum 6 characters";      valid = false }
-                        if (password != confirmPassword) { confirmError = "Passwords do not match"; valid = false }
-
-                        // Student-only: must be verified
-                        if (selectedRole == "student" && verifyState != VerifyState.VERIFIED) {
-                            ubNumberError = "Please verify your UB student number first"
-                            valid = false
-                        }
-
-                        if (valid) {
-                            isRegistering = true
-                            scope.launch {
-                                val db     = AppDatabase.getDatabase(context)
-                                val exists = db.userDao().getUserByEmail(email)
-                                if (exists != null) {
-                                    emailError     = "Email already registered"
-                                    isRegistering  = false
-                                    return@launch
-                                }
-                                val count       = db.userDao().getStudentCount(selectedRole)
-                                val prefix      = if (selectedRole == "student") "KW" else "PR"
-                                val generatedId = "$prefix${count + 1}"
-
-                                val user = User(
-                                    studentId       = generatedId,
-                                    fullName        = fullName,
-                                    email           = email,
-                                    passwordHash    = hashPw(password),
-                                    role            = selectedRole,
-                                    ubStudentNumber = if (selectedRole == "student") ubNumber.trim().uppercase() else "",
-                                    university      = verifiedUniversity?.name ?: "",
-                                    isVerified      = selectedRole == "student"
-                                )
-                                db.userDao().insertUser(user)
-                                Toast.makeText(context, "Account created! Welcome $fullName", Toast.LENGTH_SHORT).show()
-                                navController.navigate("login") { popUpTo("register") { inclusive = true } }
-                                isRegistering = false
-                            }
-                        }
-                    }
+                    text      = if (state.canRegister) "REGISTER" else "VERIFY STUDENT FIRST",
+                    isLoading = state.isRegistering,
+                    onClick   = viewModel::register
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -373,9 +242,9 @@ private fun StudentVerificationPanel(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text     = "Detected: ${detectedUniversity.name}",
-                        fontSize = 11.sp,
-                        color    = GroundedColors.ClayWarm,
+                        text       = "Detected: ${detectedUniversity.name}",
+                        fontSize   = 11.sp,
+                        color      = GroundedColors.ClayWarm,
                         fontWeight = FontWeight.Medium
                     )
                 }
