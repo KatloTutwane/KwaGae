@@ -40,7 +40,9 @@ import com.example.kwagae.notifications.AlertPrefs
 import com.example.kwagae.ui.components.*
 import com.example.kwagae.ui.theme.GroundedColors
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -625,15 +627,46 @@ fun GroundedFiltersScreen(bottomNavController: NavController) {
 @Composable
 fun GroundedProfileScreen(navController: NavController) {
     val context = LocalContext.current
-    var user by remember { mutableStateOf<com.example.kwagae.data.models.User?>(null) }
+    var user           by remember { mutableStateOf<com.example.kwagae.data.models.User?>(null) }
+    var memberSince    by remember { mutableStateOf("—") }
+    var listingsCount  by remember { mutableStateOf(0) }
+    var savedCount     by remember { mutableStateOf(0) }
+    var isProvider     by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val db     = AppDatabase.getDatabase(context)
         val prefs  = context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE)
         val userId = prefs.getLong("user_id", -1L)
+        val role   = prefs.getString("role", "student") ?: "student"
+        isProvider = role == "provider"
+
+        // ── Member Since ─────────────────────────────────────────────────────
+        // Store the first-view timestamp so it persists across relaunches
+        if (prefs.getLong("member_since", 0L) == 0L) {
+            prefs.edit().putLong("member_since", System.currentTimeMillis()).apply()
+        }
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = prefs.getLong("member_since", System.currentTimeMillis())
+        }
+        memberSince = cal.get(Calendar.YEAR).toString()
+
+        // ── User object ───────────────────────────────────────────────────────
         if (userId != -1L) {
             user = db.userDao().getById(userId)
         }
+
+        // ── Listings count ────────────────────────────────────────────────────
+        listingsCount = if (isProvider) {
+            val ownerUid = prefs.getString("firebase_uid", null)?.takeIf { it.isNotEmpty() }
+                ?: prefs.getString("student_id", null)?.takeIf { it.isNotEmpty() }
+                ?: userId.toString()
+            db.listingDao().getByOwnerUid(ownerUid).first().size
+        } else {
+            db.listingDao().getReservedByStudent(userId.toString()).first().size
+        }
+
+        // ── Saved count ───────────────────────────────────────────────────────
+        savedCount = prefs.getStringSet("saved_listings", emptySet())!!.size
     }
 
     Box(
@@ -722,9 +755,24 @@ fun GroundedProfileScreen(navController: NavController) {
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    GroundedProfileStatCard(Icons.Default.CalendarToday, "Member Since", "2024", Modifier.weight(1f))
-                    GroundedProfileStatCard(Icons.Default.Home,          "Listings",     "0",    Modifier.weight(1f))
-                    GroundedProfileStatCard(Icons.Default.Favorite,      "Saved",        "0",    Modifier.weight(1f))
+                    GroundedProfileStatCard(
+                        icon     = Icons.Default.CalendarToday,
+                        label    = "Member Since",
+                        value    = memberSince,
+                        modifier = Modifier.weight(1f)
+                    )
+                    GroundedProfileStatCard(
+                        icon     = if (isProvider) Icons.Default.Home else Icons.Default.Key,
+                        label    = if (isProvider) "Listings" else "Reserved",
+                        value    = listingsCount.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    GroundedProfileStatCard(
+                        icon     = Icons.Default.Favorite,
+                        label    = "Saved",
+                        value    = savedCount.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 Spacer(Modifier.height(24.dp))
             }
@@ -966,8 +1014,11 @@ fun GroundedCategoryChip(
 
 @Composable
 fun GroundedListingCardHorizontal(listing: Listing, onClick: () -> Unit) {
-    val context     = LocalContext.current
-    var isFavourite by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val prefs   = remember { context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE) }
+    var isFavourite by remember(listing.listingId) {
+        mutableStateOf(prefs.getStringSet("saved_listings", emptySet())!!.contains(listing.listingId.toString()))
+    }
     val imageSource = remember(listing.listingId) {
         listing.imageUrls.split(",").firstOrNull { it.isNotBlank() }
             ?: listing.imageUrl.takeIf { it.isNotBlank() }
@@ -1054,7 +1105,12 @@ fun GroundedListingCardHorizontal(listing: Listing, onClick: () -> Unit) {
 
                 // Favourite button — top-right
                 IconButton(
-                    onClick  = { isFavourite = !isFavourite },
+                    onClick  = {
+                        isFavourite = !isFavourite
+                        val saved = prefs.getStringSet("saved_listings", emptySet())!!.toMutableSet()
+                        if (isFavourite) saved.add(listing.listingId.toString()) else saved.remove(listing.listingId.toString())
+                        prefs.edit().putStringSet("saved_listings", saved).apply()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
@@ -1150,8 +1206,11 @@ fun GroundedListingCardVertical(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val context     = LocalContext.current
-    var isFavourite by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val prefs   = remember { context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE) }
+    var isFavourite by remember(listing.listingId) {
+        mutableStateOf(prefs.getStringSet("saved_listings", emptySet())!!.contains(listing.listingId.toString()))
+    }
     val imageSource = remember(listing.listingId) {
         listing.imageUrls.split(",").firstOrNull { it.isNotBlank() }
             ?: listing.imageUrl.takeIf { it.isNotBlank() }
@@ -1237,7 +1296,12 @@ fun GroundedListingCardVertical(
 
                 // Favourite button — top-right
                 IconButton(
-                    onClick  = { isFavourite = !isFavourite },
+                    onClick  = {
+                        isFavourite = !isFavourite
+                        val saved = prefs.getStringSet("saved_listings", emptySet())!!.toMutableSet()
+                        if (isFavourite) saved.add(listing.listingId.toString()) else saved.remove(listing.listingId.toString())
+                        prefs.edit().putStringSet("saved_listings", saved).apply()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)

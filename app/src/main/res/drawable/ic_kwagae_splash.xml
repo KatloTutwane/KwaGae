@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Green arc around the house (top half circle) -->
+    <path
+        android:pathData="M20,56 A31,31 0 0 1 80,56"
+        android:strokeColor="#4A7C3F"
+        android:strokeWidth="4.5"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round" />
+
+    <!-- House body (terracotta) -->
+    <path
+        android:pathData="M22,56 L22,78 L78,78 L78,56 Z"
+        android:fillColor="#C05A2A" />
+
+    <!-- Roof (dark brown) -->
+    <path
+        android:pathData="M18,56 L50,30 L82,56 Z"
+        android:fillColor="#5C3D1E" />
+
+    <!-- Chimney -->
+    <path
+        android:pathData="M33,48 L33,36 L40,36 L40,52 Z"
+        android:fillColor="#5C3D1E" />
+
+    <!-- Door (arched) -->
+    <path
+        android:pathData="M44,78 L44,66 Q44,60 50,60 Q56,60 56,66 L56,78 Z"
+        android:fillColor="#3D2108" />
+
+    <!-- Left window -->
+    <path
+        android:pathData="M26,60 L26,70 L36,70 L36,60 Z"
+        android:fillColor="#F5E8CC" />
+
+    <!-- Right window -->
+    <path
+        android:pathData="M64,60 L64,70 L74,70 L74,60 Z"
+        android:fillColor="#F5E8CC" />
+
+    <!-- Window cross bars (left) -->
+    <path
+        android:pathData="M31,60 L31,70"
+        android:strokeColor="#C05A2A"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M26,65 L36,65"
+        android:strokeColor="#C05A2A"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+
+    <!-- Window cross bars (right) -->
+    <path
+        android:pathData="M69,60 L69,70"
+        android:strokeColor="#C05A2A"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M64,65 L74,65"
+        android:strokeColor="#C05A2A"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+
+    <!-- Location pin (green, centred above roof) -->
+    <path
+        android:pathData="M50,6 C44,6 38,11 38,18 C38,27 50,38 50,38 C50,38 62,27 62,18 C62,11 56,6 50,6 Z"
+        android:fillColor="#4A7C3F" />
+
+    <!-- Keyhole circle in pin -->
+    <path
+        android:pathData="M53,18 A3,3 0 1,1 47,18 A3,3 0 1,1 53,18 Z"
+        android:fillColor="#F5E8CC" />
+
+    <!-- Keyhole stem -->
+    <path
+        android:pathData="M48.5,20.5 L48.5,25 L51.5,25 L51.5,20.5 Z"
+        android:fillColor="#F5E8CC" />
+
+</vector>

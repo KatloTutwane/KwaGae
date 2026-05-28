@@ -624,8 +624,11 @@ fun GroundedListingCard(
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    var isFavourite by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val prefs   = remember { context.getSharedPreferences("kwagae_prefs", android.content.Context.MODE_PRIVATE) }
+    var isFavourite by remember(listing.listingId) {
+        mutableStateOf(prefs.getStringSet("saved_listings", emptySet())!!.contains(listing.listingId.toString()))
+    }
 
     // First non-blank URL wins; fallback chain: imageUrls list → imageUrl → null
     val imageSource = remember(listing.listingId) {
@@ -719,7 +722,12 @@ fun GroundedListingCard(
 
                 // Favourite button — top-right
                 IconButton(
-                    onClick  = { isFavourite = !isFavourite },
+                    onClick  = {
+                        isFavourite = !isFavourite
+                        val saved = prefs.getStringSet("saved_listings", emptySet())!!.toMutableSet()
+                        if (isFavourite) saved.add(listing.listingId.toString()) else saved.remove(listing.listingId.toString())
+                        prefs.edit().putStringSet("saved_listings", saved).apply()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
