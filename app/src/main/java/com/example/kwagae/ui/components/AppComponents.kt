@@ -35,6 +35,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -217,7 +223,10 @@ fun GroundedTextField(
     enabled: Boolean = true,
     isPassword: Boolean = false,
     passwordVisible: Boolean = false,
-    onTogglePassword: (() -> Unit)? = null
+    onTogglePassword: (() -> Unit)? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
+    focusRequester: FocusRequester? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -255,10 +264,20 @@ fun GroundedTextField(
             }) else null,
             visualTransformation = if (isPassword && !passwordVisible)
                 PasswordVisualTransformation() else VisualTransformation.None,
-            modifier   = Modifier.fillMaxWidth(),
+            modifier   = Modifier
+                .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
             shape      = RoundedCornerShape(10.dp),
             enabled    = enabled,
             singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (isPassword) KeyboardType.Password else KeyboardType.Text,
+                imeAction    = imeAction
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { onImeAction() },
+                onDone = { onImeAction() }
+            ),
             textStyle  = LocalTextStyle.current.copy(
                 fontSize = 14.sp,
                 color    = GroundedColors.TextPrimary
@@ -290,16 +309,26 @@ fun GroundedField(
     value: String,
     onChange: (String) -> Unit,
     icon: ImageVector,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
+    focusRequester: FocusRequester? = null
 ) {
     OutlinedTextField(
         value         = value,
         onValueChange = onChange,
         label         = { Text(label, fontSize = 11.sp, letterSpacing = 1.sp) },
         leadingIcon   = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
-        modifier      = modifier.fillMaxWidth(),
+        modifier      = modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         shape         = RoundedCornerShape(10.dp),
         singleLine    = true,
+        keyboardOptions = KeyboardOptions(imeAction = imeAction),
+        keyboardActions = KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() }
+        ),
         colors        = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor  = GroundedColors.BorderDefault,
             focusedBorderColor    = GroundedColors.BorderFocus,
@@ -321,7 +350,10 @@ fun GroundedPasswordField(
     onChange: (String) -> Unit,
     visible: Boolean,
     toggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
+    focusRequester: FocusRequester? = null
 ) {
     OutlinedTextField(
         value               = value,
@@ -340,9 +372,19 @@ fun GroundedPasswordField(
         },
         visualTransformation = if (visible) VisualTransformation.None
                                else PasswordVisualTransformation(),
-        modifier   = modifier.fillMaxWidth(),
+        modifier   = modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         shape      = RoundedCornerShape(10.dp),
         singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction    = imeAction
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() }
+        ),
         colors     = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = GroundedColors.BorderDefault,
             focusedBorderColor   = GroundedColors.BorderFocus,

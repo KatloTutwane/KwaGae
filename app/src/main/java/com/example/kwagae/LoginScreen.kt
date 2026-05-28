@@ -17,8 +17,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -108,13 +111,18 @@ fun LoginScreen(navController: NavController) {
                 EarthDivider(label = "SIGN IN")
                 Spacer(Modifier.height(16.dp))
 
+                val passwordFocus = remember { FocusRequester() }
+                val keyboard      = LocalSoftwareKeyboardController.current
+
                 GroundedTextField(
                     value         = state.email,
                     onValueChange = viewModel::onEmailChange,
                     label         = "EMAIL ADDRESS",
                     placeholder   = "student@example.com",
                     leadingIcon   = Icons.Default.Email,
-                    enabled       = !state.isLoading
+                    enabled       = !state.isLoading,
+                    imeAction     = ImeAction.Next,
+                    onImeAction   = { passwordFocus.requestFocus() }
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -128,7 +136,10 @@ fun LoginScreen(navController: NavController) {
                     enabled          = !state.isLoading,
                     isPassword       = true,
                     passwordVisible  = state.passwordVisible,
-                    onTogglePassword = viewModel::togglePasswordVisible
+                    onTogglePassword = viewModel::togglePasswordVisible,
+                    imeAction        = ImeAction.Done,
+                    onImeAction      = { keyboard?.hide(); viewModel.login() },
+                    focusRequester   = passwordFocus
                 )
 
                 if (state.errorMessage.isNotEmpty()) {

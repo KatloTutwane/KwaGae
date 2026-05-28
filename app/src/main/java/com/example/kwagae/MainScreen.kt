@@ -163,11 +163,15 @@ fun GroundedListingsScreen(navController: NavController, viewModel: ListingsView
     val allFilteredListings by viewModel.filteredListings.collectAsState()
 
     val categories = listOf(
-        Category("All",        Icons.Default.Home),
-        Category("Apartments", Icons.Default.Business),
-        Category("Houses",     Icons.Default.House),
-        Category("Rooms",      Icons.Default.Bed),
-        Category("Studios",    Icons.Default.Apartment)
+        Category("All",             Icons.Default.Home),
+        Category("Houses",          Icons.Default.House),
+        Category("Apartments",      Icons.Default.Business),
+        Category("Rooms",           Icons.Default.Bed),
+        Category("Studios",         Icons.Default.Apartment),
+        Category("Townhouses",      Icons.Default.Villa),
+        Category("Bachelor Flats",  Icons.Default.MeetingRoom),
+        Category("Duplexes",        Icons.Default.Layers),
+        Category("Bedsitters",      Icons.Default.SingleBed)
     )
 
     LaunchedEffect(Unit) {
@@ -190,12 +194,28 @@ fun GroundedListingsScreen(navController: NavController, viewModel: ListingsView
         }
     }
 
-    // Most recent 6 listings (list is already newest-first from Room query)
-    val recentListings = allFilteredListings.take(6)
+    // Recent listings — pick one from each type first so the row always shows variety
+    // (seeded data all has the same syncedAt, so a plain take(6) would show only Houses)
+    val recentListings = remember(allFilteredListings) {
+        val onePerType = allFilteredListings
+            .groupBy { it.type }
+            .values
+            .mapNotNull { it.firstOrNull() }
+        val rest = allFilteredListings.filterNot { l ->
+            onePerType.any { it.listingId == l.listingId }
+        }
+        (onePerType + rest).take(6)
+    }
 
-    // Most affordable available listings as "recommended" — meaningful for students
+    // Recommended — cheapest representative from each type, sorted by price
     val recommendedListings = remember(allFilteredListings) {
-        allFilteredListings.filter { !it.isReserved }.sortedBy { it.price }.take(4)
+        allFilteredListings
+            .filter { !it.isReserved }
+            .groupBy { it.type }
+            .values
+            .mapNotNull { group -> group.minByOrNull { it.price } }
+            .sortedBy { it.price }
+            .take(4)
     }
 
     // Real stats derived from live data
@@ -209,10 +229,31 @@ fun GroundedListingsScreen(navController: NavController, viewModel: ListingsView
         .filter { it.isNotEmpty() }
         .toSet().size
 
-    val displayedRecent = if (selectedCategory == "All") recentListings else {
-        recentListings.filter {
-            it.type.equals(selectedCategory.trimEnd('s'), ignoreCase = true) ||
-            it.title.contains(selectedCategory.trimEnd('s'), ignoreCase = true)
+    // Map category chip label → the exact type string used in the database
+    val categoryTypeMap = mapOf(
+        "Apartments"    to "Apartment",
+        "Houses"        to "House",
+        "Rooms"         to "Room",
+        "Studios"       to "Studio",
+        "Townhouses"    to "Townhouse",
+        "Bachelor Flats" to "Bachelor Flat",
+        "Duplexes"      to "Duplex",
+        "Bedsitters"    to "Bedsitter"
+    )
+
+    val displayedRecent = remember(selectedCategory, recentListings, allFilteredListings) {
+        if (selectedCategory == "All") {
+            recentListings
+        } else {
+            val targetType = categoryTypeMap[selectedCategory] ?: selectedCategory
+            // For Studios, search the full list since they are hidden from allFilteredListings
+            val sourceList = if (selectedCategory == "Studios") allFilteredListings else recentListings
+            sourceList.filter {
+                it.type.equals(targetType, ignoreCase = true)
+            }.ifEmpty {
+                // Fallback: search full list by type if recentListings has none of this type
+                allFilteredListings.filter { it.type.equals(targetType, ignoreCase = true) }.take(6)
+            }
         }
     }
 
@@ -701,6 +742,16 @@ fun GroundedProfileScreen(navController: NavController) {
                             .fillMaxWidth()
                             .border(1.dp, GroundedColors.BorderDefault, RoundedCornerShape(16.dp))
                     ) {
+                        // My Reservations — students only
+                        if (user?.role == "student" || user == null) {
+                            GroundedProfileMenuItem(
+                                icon     = Icons.Default.Key,
+                                title    = "My Reservations",
+                                subtitle = "View your reserved properties",
+                                onClick  = { navController.navigate("my_reservations") }
+                            )
+                            GroundedDivider()
+                        }
                         GroundedProfileMenuItem(Icons.Default.Settings,    "Settings",           "Adjust your preferences")
                         GroundedDivider()
                         GroundedProfileMenuItem(Icons.Default.Palette,     "Appearance",         "Theme and display")
@@ -1346,9 +1397,9 @@ fun GroundedProfileStatCard(
 }
 
 @Composable
-fun GroundedProfileMenuItem(icon: ImageVector, title: String, subtitle: String) {
+fun GroundedProfileMenuItem(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit = {}) {
     Row(
-        modifier          = Modifier.fillMaxWidth().clickable { }.padding(16.dp),
+        modifier          = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = GroundedColors.BarkMid)

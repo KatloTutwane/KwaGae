@@ -4,8 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -14,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -156,26 +165,37 @@ fun ReservationScreen(navController: NavController, listingId: Long) {
                     }
                     Spacer(Modifier.height(16.dp))
 
+                    // Focus chain: Name → Card Number → Expiry → CVV → Pay
+                    val cardNumberFocus = remember { FocusRequester() }
+                    val expiryFocus     = remember { FocusRequester() }
+                    val cvvFocus        = remember { FocusRequester() }
+                    val keyboard        = LocalSoftwareKeyboardController.current
+
                     // Cardholder name
                     PaymentField(
-                        label         = "Cardholder Name",
-                        value         = state.cardHolder,
-                        onValueChange = viewModel::onCardHolderChange,
-                        placeholder   = "e.g. Kabo Mosetlhi",
-                        error         = state.cardHolderError,
-                        keyboardType  = KeyboardType.Text
+                        label          = "Cardholder Name",
+                        value          = state.cardHolder,
+                        onValueChange  = viewModel::onCardHolderChange,
+                        placeholder    = "e.g. Kabo Mosetlhi",
+                        error          = state.cardHolderError,
+                        keyboardType   = KeyboardType.Text,
+                        imeAction      = ImeAction.Next,
+                        onImeAction    = { cardNumberFocus.requestFocus() }
                     )
 
                     Spacer(Modifier.height(12.dp))
 
                     // Card number
                     PaymentField(
-                        label         = "Card Number",
-                        value         = state.cardNumber,
-                        onValueChange = viewModel::onCardNumberChange,
-                        placeholder   = "0000 0000 0000 0000",
-                        error         = state.cardNumberError,
-                        keyboardType  = KeyboardType.Number
+                        label          = "Card Number",
+                        value          = state.cardNumber,
+                        onValueChange  = viewModel::onCardNumberChange,
+                        placeholder    = "0000 0000 0000 0000",
+                        error          = state.cardNumberError,
+                        keyboardType   = KeyboardType.Number,
+                        imeAction      = ImeAction.Next,
+                        onImeAction    = { expiryFocus.requestFocus() },
+                        focusRequester = cardNumberFocus
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -184,22 +204,32 @@ fun ReservationScreen(navController: NavController, listingId: Long) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
                             PaymentField(
-                                label         = "Expiry (MM/YY)",
-                                value         = state.expiry,
-                                onValueChange = viewModel::onExpiryChange,
-                                placeholder   = "MM/YY",
-                                error         = state.expiryError,
-                                keyboardType  = KeyboardType.Number
+                                label                = "Expiry (MM/YY)",
+                                value                = state.expiry,
+                                onValueChange        = viewModel::onExpiryChange,
+                                placeholder          = "MM/YY",
+                                error                = state.expiryError,
+                                keyboardType         = KeyboardType.Number,
+                                visualTransformation = ExpiryVisualTransformation(),
+                                imeAction            = ImeAction.Next,
+                                onImeAction          = { cvvFocus.requestFocus() },
+                                focusRequester       = expiryFocus
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             PaymentField(
-                                label         = "CVV",
-                                value         = state.cvv,
-                                onValueChange = viewModel::onCvvChange,
-                                placeholder   = "123",
-                                error         = state.cvvError,
-                                keyboardType  = KeyboardType.Number
+                                label          = "CVV",
+                                value          = state.cvv,
+                                onValueChange  = viewModel::onCvvChange,
+                                placeholder    = "123",
+                                error          = state.cvvError,
+                                keyboardType   = KeyboardType.Number,
+                                imeAction      = ImeAction.Done,
+                                onImeAction    = {
+                                    keyboard?.hide()
+                                    viewModel.pay()
+                                },
+                                focusRequester = cvvFocus
                             )
                         }
                     }
@@ -265,6 +295,31 @@ fun ReservationScreen(navController: NavController, listingId: Long) {
     }
 }
 
+/**
+ * Displays raw expiry digits (e.g. "1027") as "MM/YY" (e.g. "10/27").
+ * The slash is purely visual — it is never stored in state, which avoids the
+ * cursor-position bug where subsequent digits appeared in the wrong order.
+ */
+private class ExpiryVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val out = buildString {
+            text.forEachIndexed { i, ch ->
+                append(ch)
+                if (i == 1 && text.length > 2) append('/')
+            }
+        }
+        val offsetMapping = object : OffsetMapping {
+            // original pos → transformed pos  (insert 1 extra char after position 2)
+            override fun originalToTransformed(offset: Int) =
+                if (offset <= 2) offset else offset + 1
+            // transformed pos → original pos
+            override fun transformedToOriginal(offset: Int) =
+                if (offset <= 2) offset else (offset - 1).coerceAtLeast(0)
+        }
+        return TransformedText(AnnotatedString(out), offsetMapping)
+    }
+}
+
 @Composable
 private fun PaymentField(
     label: String,
@@ -272,20 +327,34 @@ private fun PaymentField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     error: String,
-    keyboardType: KeyboardType
+    keyboardType: KeyboardType,
+    imeAction: ImeAction                      = ImeAction.Next,
+    onImeAction: () -> Unit                   = {},
+    focusRequester: FocusRequester?           = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     OutlinedTextField(
-        value         = value,
-        onValueChange = onValueChange,
-        label         = { Text(label, fontSize = 12.sp) },
-        placeholder   = { Text(placeholder, fontSize = 13.sp, color = GroundedColors.TextHint) },
-        isError       = error.isNotEmpty(),
-        supportingText = if (error.isNotEmpty()) ({ Text(error, fontSize = 11.sp, color = MaterialTheme.colorScheme.error) }) else null,
-        singleLine    = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        modifier      = Modifier.fillMaxWidth(),
-        shape         = RoundedCornerShape(10.dp),
-        colors        = OutlinedTextFieldDefaults.colors(
+        value                = value,
+        onValueChange        = onValueChange,
+        label                = { Text(label, fontSize = 12.sp) },
+        placeholder          = { Text(placeholder, fontSize = 13.sp, color = GroundedColors.TextHint) },
+        isError              = error.isNotEmpty(),
+        supportingText       = if (error.isNotEmpty()) ({ Text(error, fontSize = 11.sp, color = MaterialTheme.colorScheme.error) }) else null,
+        singleLine           = true,
+        keyboardOptions      = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction    = imeAction
+        ),
+        keyboardActions      = KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() }
+        ),
+        visualTransformation = visualTransformation,
+        modifier             = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+        shape                = RoundedCornerShape(10.dp),
+        colors               = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = GroundedColors.CreamField,
             focusedContainerColor   = GroundedColors.CreamFocus,
             unfocusedBorderColor    = if (error.isNotEmpty()) MaterialTheme.colorScheme.error else GroundedColors.BorderDefault,

@@ -68,9 +68,11 @@ class ReservationViewModel(
         _uiState.update { it.copy(cardNumber = formatted, cardNumberError = "") }
     }
     fun onExpiryChange(v: String) {
+        // Store ONLY raw digits — the "/" is added purely as a visual overlay in the UI.
+        // Storing it in state caused the cursor to land before the "/" on the next keystroke,
+        // making typed digits appear out of order (e.g. "10/27" became "10/72").
         val digits = v.filter { it.isDigit() }.take(4)
-        val formatted = if (digits.length > 2) "${digits.take(2)}/${digits.drop(2)}" else digits
-        _uiState.update { it.copy(expiry = formatted, expiryError = "") }
+        _uiState.update { it.copy(expiry = digits, expiryError = "") }
     }
     fun onCvvChange(v: String) {
         val digits = v.filter { it.isDigit() }.take(4)
@@ -90,7 +92,7 @@ class ReservationViewModel(
             _uiState.update { it.copy(cardNumberError = "Enter a valid 16-digit card number") }
             valid = false
         }
-        if (s.expiry.length < 5) {
+        if (s.expiry.length < 4) {   // state holds raw digits e.g. "1027", not "10/27"
             _uiState.update { it.copy(expiryError = "Enter expiry as MM/YY") }
             valid = false
         }

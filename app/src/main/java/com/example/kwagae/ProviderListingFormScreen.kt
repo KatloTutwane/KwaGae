@@ -33,7 +33,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.kwagae.ui.theme.GroundedColors
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 
 // ── Provider Listing Form ─────────────────────────────────────────────────────
 
@@ -401,14 +406,22 @@ private fun ImagePickerSection(
 
 @Composable
 private fun BasicInfoSection(state: ListingFormState, viewModel: ProviderListingFormViewModel) {
+    val locationFocus = remember { FocusRequester() }
+    val contactFocus  = remember { FocusRequester() }
+    val priceFocus    = remember { FocusRequester() }
+    val depositFocus  = remember { FocusRequester() }
+    val keyboard      = LocalSoftwareKeyboardController.current
+
     // Title
     FormTextField(
-        label     = "LISTING TITLE *",
-        value     = state.title,
-        onChange  = viewModel::setTitle,
-        error     = state.titleError,
-        hint      = "e.g. Furnished Studio Near UB Campus",
-        leadingIcon = Icons.Default.Home
+        label          = "LISTING TITLE *",
+        value          = state.title,
+        onChange       = viewModel::setTitle,
+        error          = state.titleError,
+        hint           = "e.g. Furnished Studio Near UB Campus",
+        leadingIcon    = Icons.Default.Home,
+        imeAction      = ImeAction.Next,
+        onImeAction    = { locationFocus.requestFocus() }
     )
 
     Spacer(Modifier.height(10.dp))
@@ -424,7 +437,7 @@ private fun BasicInfoSection(state: ListingFormState, viewModel: ProviderListing
 
     Spacer(Modifier.height(10.dp))
 
-    // Description
+    // Description (multi-line — Enter inserts newlines; no imeAction override)
     FormTextField(
         label       = "DESCRIPTION",
         value       = state.description,
@@ -440,24 +453,30 @@ private fun BasicInfoSection(state: ListingFormState, viewModel: ProviderListing
 
     // Location
     FormTextField(
-        label       = "LOCATION / ADDRESS *",
-        value       = state.location,
-        onChange    = viewModel::setLocation,
-        error       = state.locationError,
-        hint        = "e.g. Plot 1234, Gaborone West",
-        leadingIcon = Icons.Default.LocationOn
+        label          = "LOCATION / ADDRESS *",
+        value          = state.location,
+        onChange       = viewModel::setLocation,
+        error          = state.locationError,
+        hint           = "e.g. Plot 1234, Gaborone West",
+        leadingIcon    = Icons.Default.LocationOn,
+        imeAction      = ImeAction.Next,
+        onImeAction    = { contactFocus.requestFocus() },
+        focusRequester = locationFocus
     )
 
     Spacer(Modifier.height(10.dp))
 
     // Contact
     FormTextField(
-        label       = "CONTACT NUMBER",
-        value       = state.contactInfo,
-        onChange    = viewModel::setContactInfo,
-        hint        = "WhatsApp / Phone e.g. +267 71234567",
-        keyboardType = KeyboardType.Phone,
-        leadingIcon = Icons.Default.Phone
+        label          = "CONTACT NUMBER",
+        value          = state.contactInfo,
+        onChange       = viewModel::setContactInfo,
+        hint           = "WhatsApp / Phone e.g. +267 71234567",
+        keyboardType   = KeyboardType.Phone,
+        leadingIcon    = Icons.Default.Phone,
+        imeAction      = ImeAction.Next,
+        onImeAction    = { priceFocus.requestFocus() },
+        focusRequester = contactFocus
     )
 
     Spacer(Modifier.height(10.dp))
@@ -469,23 +488,29 @@ private fun BasicInfoSection(state: ListingFormState, viewModel: ProviderListing
     ) {
         Column(modifier = Modifier.weight(1f)) {
             FormTextField(
-                label        = "MONTHLY RENT (BWP) *",
-                value        = state.price,
-                onChange     = viewModel::setPrice,
-                error        = state.priceError,
-                hint         = "e.g. 3500",
-                keyboardType = KeyboardType.Number,
-                leadingIcon  = Icons.Default.AttachMoney
+                label          = "MONTHLY RENT (BWP) *",
+                value          = state.price,
+                onChange       = viewModel::setPrice,
+                error          = state.priceError,
+                hint           = "e.g. 3500",
+                keyboardType   = KeyboardType.Number,
+                leadingIcon    = Icons.Default.AttachMoney,
+                imeAction      = ImeAction.Next,
+                onImeAction    = { depositFocus.requestFocus() },
+                focusRequester = priceFocus
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             FormTextField(
-                label        = "DEPOSIT (BWP)",
-                value        = state.depositAmount,
-                onChange     = viewModel::setDeposit,
-                hint         = "e.g. 7000",
-                keyboardType = KeyboardType.Number,
-                leadingIcon  = Icons.Default.Lock
+                label          = "DEPOSIT (BWP)",
+                value          = state.depositAmount,
+                onChange       = viewModel::setDeposit,
+                hint           = "e.g. 7000",
+                keyboardType   = KeyboardType.Number,
+                leadingIcon    = Icons.Default.Lock,
+                imeAction      = ImeAction.Done,
+                onImeAction    = { keyboard?.hide() },
+                focusRequester = depositFocus
             )
         }
     }
@@ -495,12 +520,16 @@ private fun BasicInfoSection(state: ListingFormState, viewModel: ProviderListing
 
 @Composable
 private fun AvailabilitySection(state: ListingFormState, viewModel: ProviderListingFormViewModel) {
+    val keyboard = LocalSoftwareKeyboardController.current
+
     FormTextField(
         label       = "AVAILABLE FROM",
         value       = state.availabilityDate,
         onChange    = viewModel::setAvailabilityDate,
         hint        = "e.g. 01 Jan 2025 or Immediately",
-        leadingIcon = Icons.Default.CalendarToday
+        leadingIcon = Icons.Default.CalendarToday,
+        imeAction   = ImeAction.Done,
+        onImeAction = { keyboard?.hide() }
     )
 
     Spacer(Modifier.height(12.dp))
@@ -631,16 +660,19 @@ private fun AdditionalDetailsSection(state: ListingFormState, viewModel: Provide
 
 @Composable
 private fun FormTextField(
-    label:        String,
-    value:        String,
-    onChange:     (String) -> Unit,
-    hint:         String          = "",
-    error:        String          = "",
-    leadingIcon:  ImageVector?    = null,
-    keyboardType: KeyboardType    = KeyboardType.Text,
-    singleLine:   Boolean         = true,
-    minLines:     Int             = 1,
-    maxLines:     Int             = 1
+    label:          String,
+    value:          String,
+    onChange:       (String) -> Unit,
+    hint:           String          = "",
+    error:          String          = "",
+    leadingIcon:    ImageVector?    = null,
+    keyboardType:   KeyboardType    = KeyboardType.Text,
+    singleLine:     Boolean         = true,
+    minLines:       Int             = 1,
+    maxLines:       Int             = 1,
+    imeAction:      ImeAction       = ImeAction.Next,
+    onImeAction:    () -> Unit      = {},
+    focusRequester: FocusRequester? = null
 ) {
     Column {
         Text(
@@ -662,9 +694,18 @@ private fun FormTextField(
             singleLine    = singleLine,
             minLines      = minLines,
             maxLines      = if (singleLine) 1 else maxLines,
-            modifier      = Modifier.fillMaxWidth(),
+            modifier      = Modifier
+                .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
             shape         = RoundedCornerShape(10.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                imeAction    = if (singleLine) imeAction else ImeAction.Default
+            ),
+            keyboardActions = if (singleLine) KeyboardActions(
+                onNext = { onImeAction() },
+                onDone = { onImeAction() }
+            ) else KeyboardActions.Default,
             textStyle     = LocalTextStyle.current.copy(
                 fontSize = 13.sp,
                 color    = GroundedColors.TextPrimary

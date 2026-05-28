@@ -12,9 +12,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,27 +71,47 @@ fun RegisterScreen(navController: NavController) {
                 )
 
                 // ── Basic fields ───────────────────────────────────────────────
-                GroundedField("FULL NAME", state.fullName, viewModel::onFullNameChange, Icons.Default.Person)
+                val emailFocus   = remember { FocusRequester() }
+                val passwordFocus = remember { FocusRequester() }
+                val confirmFocus  = remember { FocusRequester() }
+                val keyboard      = LocalSoftwareKeyboardController.current
+
+                GroundedField(
+                    "FULL NAME", state.fullName, viewModel::onFullNameChange, Icons.Default.Person,
+                    imeAction   = ImeAction.Next,
+                    onImeAction = { emailFocus.requestFocus() }
+                )
                 FieldErrorText(state.nameError)
 
-                GroundedField("EMAIL ADDRESS", state.email, viewModel::onEmailChange, Icons.Default.Email)
+                GroundedField(
+                    "EMAIL ADDRESS", state.email, viewModel::onEmailChange, Icons.Default.Email,
+                    imeAction      = ImeAction.Next,
+                    onImeAction    = { passwordFocus.requestFocus() },
+                    focusRequester = emailFocus
+                )
                 FieldErrorText(state.emailError)
 
                 GroundedPasswordField(
-                    label    = "PASSWORD",
-                    value    = state.password,
-                    onChange = viewModel::onPasswordChange,
-                    visible  = state.passwordVisible,
-                    toggle   = viewModel::togglePasswordVisible
+                    label          = "PASSWORD",
+                    value          = state.password,
+                    onChange       = viewModel::onPasswordChange,
+                    visible        = state.passwordVisible,
+                    toggle         = viewModel::togglePasswordVisible,
+                    imeAction      = ImeAction.Next,
+                    onImeAction    = { confirmFocus.requestFocus() },
+                    focusRequester = passwordFocus
                 )
                 FieldErrorText(state.passwordError)
 
                 GroundedPasswordField(
-                    label    = "CONFIRM PASSWORD",
-                    value    = state.confirmPassword,
-                    onChange = viewModel::onConfirmPasswordChange,
-                    visible  = state.confirmVisible,
-                    toggle   = viewModel::toggleConfirmVisible
+                    label          = "CONFIRM PASSWORD",
+                    value          = state.confirmPassword,
+                    onChange       = viewModel::onConfirmPasswordChange,
+                    visible        = state.confirmVisible,
+                    toggle         = viewModel::toggleConfirmVisible,
+                    imeAction      = ImeAction.Done,
+                    onImeAction    = { keyboard?.hide(); viewModel.register() },
+                    focusRequester = confirmFocus
                 )
                 FieldErrorText(state.confirmError)
 
@@ -295,9 +321,11 @@ private fun StudentVerificationPanel(
                     })
                     else -> null
                 },
-                enabled       = verifyState != VerifyState.CHECKING && verifyState != VerifyState.VERIFIED,
-                singleLine    = true,
-                modifier      = Modifier.weight(1f),
+                enabled         = verifyState != VerifyState.CHECKING && verifyState != VerifyState.VERIFIED,
+                singleLine      = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onVerifyClick() }),
+                modifier        = Modifier.weight(1f),
                 shape         = RoundedCornerShape(10.dp),
                 textStyle     = LocalTextStyle.current.copy(
                     fontSize = 13.sp,

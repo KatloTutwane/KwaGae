@@ -106,6 +106,8 @@ fun KwaGaeApp() {
             composable("conversations") { ConversationsScreen(navController) }
 
             // Provider listing management
+            composable("my_reservations") { MyReservationsScreen(navController) }
+
             composable("add_listing") {
                 ProviderListingFormScreen(navController, listingId = 0L)
             }

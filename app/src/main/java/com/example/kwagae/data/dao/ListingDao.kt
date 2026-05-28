@@ -64,6 +64,10 @@ interface ListingDao {
     @Query("SELECT * FROM listings WHERE ownerUid = :ownerUid ORDER BY syncedAt DESC, listingId DESC")
     fun getByOwnerUid(ownerUid: String): Flow<List<Listing>>
 
+    /** All listings reserved by a specific student, newest first */
+    @Query("SELECT * FROM listings WHERE isReserved = 1 AND reservedByUid = :uid ORDER BY listingId DESC")
+    fun getReservedByStudent(uid: String): Flow<List<Listing>>
+
     /** Hard-delete a listing by its local Room ID */
     @Query("DELETE FROM listings WHERE listingId = :listingId")
     suspend fun deleteById(listingId: Long)
